@@ -1,0 +1,497 @@
+openapi: 3.0.3
+info:
+  title: MessagePusher API
+  description: 消息推送平台 - 核心 API / Server酱兼容层 / 安装向导
+  version: 1.0.0
+servers:
+  - url: https://your-domain.com
+    description: 生产环境
+  - url: http://localhost:8080
+    description: 本地开发
+
+tags:
+  - name: auth
+    description: 认证(开放注册/登录)
+  - name: messages
+    description: 消息发送与查询
+  - name: api-keys
+    description: API Key 管理
+  - name: compat-keys
+    description: 兼容 Key(Server酱) 管理
+  - name: callbacks
+    description: 回调订阅(Webhook)
+  - name: stats
+    description: 统计
+  - name: install
+    description: 安装向导(仅未安装时可用)
+  - name: serverchan
+    description: Server酱 兼容层(老客户端零改动)
+
+paths:
+  # ============ 认证 ============
+  /api/v1/auth/register:
+    post:
+      tags: [auth]
+      summary: 开放注册(自动创建租户)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, example: user@example.com }
+                password: { type: string, minLength: 8, example: secret123456 }
+                tenant_name: { type: string, example: 我的团队 }
+                nickname: { type: string }
+      responses:
+        '200':
+          description: 注册成功, 返回 token 与用户信息
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResult' }
+  /api/v1/auth/login:
+    post:
+      tags: [auth]
+      summary: 登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResult' }
+  /api/v1/auth/me:
+    get:
+      tags: [auth]
+      summary: 当前用户信息
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: 当前用户与租户
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeResult' }
+
+  # ============ 消息 ============
+  /api/v1/messages:
+    post:
+      tags: [messages]
+      summary: 发送消息(异步受理, 返回 202)
+      description: |
+        幂等: 相同 request_id 只受理一次, 重复请求返回原 message_id。
+        限流: 每租户每分钟额度, 超限返回 429。
+        渠道: auto 或 webhook(当前可用), 生产环境支持 email/apns/fcm/inapp。
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recipients]
+              properties:
+                request_id: { type: string, example: order-20260825-001, description: 幂等键 }
+                template_code: { type: string, example: verify_code, description: 模板编码(与 content 二选一) }
+                title: { type: string, example: 订单通知 }
+                content: { type: string, example: 您的订单已发货 }
+                channel: { type: string, enum: [auto, webhook, email, apns, fcm, inapp], default: auto }
+                priority: { type: string, enum: [high, normal, low], default: normal }
+                recipients:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [target]
+                    properties:
+                      target: { type: string, example: user@example.com }
+                      params:
+                        type: object
+                        additionalProperties: { type: string }
+      responses:
+        '202':
+          description: 受理成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code: { type: integer, example: 0 }
+                  message: { type: string }
+                  data:
+                    type: object
+                    properties:
+                      message_id: { type: integer }
+                      duplicate: { type: boolean }
+                      count: { type: integer }
+        '429':
+          description: 限流
+  /api/v1/messages:
+    get:
+      tags: [messages]
+      summary: 消息列表(AntD Pro 分页)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: current, in: query, schema: { type: integer, default: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, default: 20 } }
+        - { name: channel, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: recipient, in: query, schema: { type: string } }
+        - { name: since, in: query, schema: { type: string, format: date-time } }
+        - { name: until, in: query, schema: { type: string, format: date-time } }
+      responses:
+        '200':
+          description: 分页结果
+  /api/v1/messages/{id}:
+    get:
+      tags: [messages]
+      summary: 查询单条消息状态
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: 消息详情(含状态机)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: '#/components/schemas/MessageRecord' }
+
+  # ============ API Key ============
+  /api/v1/api-keys:
+    get:
+      tags: [api-keys]
+      summary: 列出 API Key
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Key 列表
+    post:
+      tags: [api-keys]
+      summary: 创建 API Key(明文仅返回一次)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                scopes: { type: string }
+                expires_in: { type: integer, description: 过期天数, default: 0 }
+      responses:
+        '200':
+          description: 创建成功, data.plain_key 为明文
+  /api/v1/api-keys/{id}:
+    delete:
+      tags: [api-keys]
+      summary: 吊销 API Key
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: 已吊销 }
+
+  # ============ 兼容 Key ============
+  /api/v1/compat-keys:
+    get:
+      tags: [compat-keys]
+      summary: 列出兼容 Key
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: 兼容 Key 列表 }
+    post:
+      tags: [compat-keys]
+      summary: 新建兼容 Key(可导入原 SendKey/SCKEY)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source]
+              properties:
+                source: { type: string, enum: [serverchan_v1, serverchan_v2] }
+                external_key: { type: string, description: 留空自动生成; 填原 key 即完成导入 }
+                default_channel: { type: string, default: webhook }
+                description: { type: string }
+      responses:
+        '200': { description: 创建成功 }
+  /api/v1/compat-keys/{id}:
+    delete:
+      tags: [compat-keys]
+      summary: 删除兼容 Key
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: 已删除 }
+
+  # ============ 回调订阅 ============
+  /api/v1/callbacks:
+    get:
+      tags: [callbacks]
+      summary: 列出回调订阅
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { description: 回调列表 }
+    post:
+      tags: [callbacks]
+      summary: 注册回调地址
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, format: uri }
+                secret: { type: string, description: HMAC 签名密钥, 回调带 X-MP-Signature 头 }
+                events:
+                  type: array
+                  items: { type: string, enum: [success, failed, retry, dead] }
+      responses:
+        '200': { description: 注册成功 }
+  /api/v1/callbacks/{id}:
+    delete:
+      tags: [callbacks]
+      summary: 删除回调订阅
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: 已删除 }
+
+  # ============ 统计 ============
+  /api/v1/stats/overview:
+    get:
+      tags: [stats]
+      summary: 概览统计(24h 或指定时间范围)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: since, in: query, schema: { type: string, format: date-time } }
+      responses:
+        '200':
+          description: 总量/成功/失败/成功率
+  /api/v1/stats/messages:
+    get:
+      tags: [stats]
+      summary: 按状态统计
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: since, in: query, schema: { type: string, format: date-time } }
+        - { name: until, in: query, schema: { type: string, format: date-time } }
+      responses:
+        '200':
+          description: 状态分布
+
+  # ============ 健康检查 ============
+  /api/v1/health:
+    get:
+      tags: [install]
+      summary: 健康检查(含安装状态)
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      status: { type: string }
+                      installed: { type: boolean }
+
+  # ============ 安装向导 ============
+  /install:
+    get:
+      tags: [install]
+      summary: 安装向导页面(HTML)
+      responses:
+        '200': { description: 向导页(已安装时建议 404/跳转) }
+  /api/install/status:
+    post:
+      tags: [install]
+      summary: 安装状态
+      responses:
+        '200':
+          description: installed 布尔值
+  /api/install/env-check:
+    post:
+      tags: [install]
+      summary: 环境检测(探测数据库/存储/队列连通性)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                db_type: { type: string, enum: [sqlite, postgres] }
+                sqlite_path: { type: string }
+                pg:
+                  type: object
+                  properties:
+                    host: { type: string }
+                    port: { type: integer }
+                    user: { type: string }
+                    password: { type: string }
+                    name: { type: string }
+                    sslmode: { type: string }
+                store_type: { type: string, enum: [sqlite, clickhouse] }
+                ch_dsn: { type: string }
+                queue_type: { type: string, enum: [inprocess, kafka] }
+                kafka_brokers: { type: string }
+      responses:
+        '200':
+          description: 逐项检测结果
+  /api/install/init:
+    post:
+      tags: [install]
+      summary: 初始化(写配置/建表/seed/生成随机密钥与 admin 路径)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                app_name: { type: string }
+                base_url: { type: string }
+                db_type: { type: string, enum: [sqlite, postgres] }
+                sqlite_path: { type: string }
+                pg: { type: object }
+                store_type: { type: string, enum: [sqlite, clickhouse] }
+                ch_dsn: { type: string }
+                queue_type: { type: string, enum: [inprocess, kafka] }
+                kafka_brokers: { type: string }
+                retention_days: { type: integer }
+      responses:
+        '200':
+          description: 成功, data.admin_path 为管理员后台随机路径
+  /api/install/admin:
+    post:
+      tags: [install]
+      summary: 创建平台超管
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                nickname: { type: string }
+      responses:
+        '200': { description: 创建成功 }
+  /api/install/complete:
+    post:
+      tags: [install]
+      summary: 完成安装(写 install.lock)
+      responses:
+        '200': { description: ok }
+
+  # ============ Server酱 兼容层 ============
+  /api/sctapi/{SendKey}.send:
+    post:
+      tags: [serverchan]
+      summary: Server酱 v2 兼容(照抄 sctapi.ftqq.com 形态与返回)
+      parameters:
+        - { name: SendKey, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                title: { type: string }
+                desp: { type: string }
+                short: { type: string }
+      responses:
+        '200':
+          description: 原版格式 {"code":0,"message":"","data":{"pushid":...}}
+  /api/sc/{SCKEY}.send:
+    get:
+      tags: [serverchan]
+      summary: Server酱 v1 兼容(照抄 sc.ftqq.com 形态与返回)
+      parameters:
+        - { name: SCKEY, in: path, required: true, schema: { type: string } }
+        - { name: text, in: query, schema: { type: string }, description: 标题 }
+        - { name: desp, in: query, schema: { type: string }, description: 内容(markdown) }
+      responses:
+        '200':
+          description: 原版格式 {"errno":0,"errmsg":"success","data":{...}}
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: JWT 或 API Key 均可(Authorization: Bearer xxx)
+  schemas:
+    AuthResult:
+      type: object
+      properties:
+        code: { type: integer, example: 0 }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            token: { type: string }
+            user: { $ref: '#/components/schemas/User' }
+    MeResult:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            user: { $ref: '#/components/schemas/User' }
+            tenant:
+              type: object
+              properties:
+                id: { type: integer }
+                name: { type: string }
+            is_admin: { type: boolean }
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        tenant_id: { type: integer }
+        email: { type: string }
+        nickname: { type: string }
+        role: { type: string, enum: [tenant_admin, tenant_user, platform_admin] }
+        status: { type: string }
+    MessageRecord:
+      type: object
+      properties:
+        message_id: { type: integer }
+        request_id: { type: string }
+        channel: { type: string }
+        title: { type: string }
+        content: { type: string }
+        recipient: { type: string }
+        status: { type: string, enum: [PENDING, SENDING, SUCCESS, FAILED, RETRYING, DEAD, CANCELLED] }
+        error: { type: string }
+        created_at: { type: string, format: date-time }

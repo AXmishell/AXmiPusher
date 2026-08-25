@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>安装 - MessagePusher</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .card {
+    background: #fff; border-radius: 16px; box-shadow: 0 24px 48px rgba(0,0,0,.35);
+    width: 100%; max-width: 640px; overflow: hidden;
+  }
+  .header { background: #1e40af; color: #fff; padding: 28px 32px; }
+  .header h1 { font-size: 22px; font-weight: 600; }
+  .header p { opacity: .85; margin-top: 6px; font-size: 14px; }
+  .body { padding: 28px 32px; }
+  .step-nav { display: flex; gap: 8px; margin-bottom: 24px; }
+  .step-dot { flex: 1; height: 4px; border-radius: 2px; background: #e2e8f0; }
+  .step-dot.active { background: #1e40af; }
+  .step-dot.done { background: #16a34a; }
+  .title { font-size: 18px; font-weight: 600; color: #0f172a; margin-bottom: 16px; }
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 13px; color: #475569; margin-bottom: 6px; font-weight: 500; }
+  .field input, .field select {
+    width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px;
+    font-size: 14px; outline: none; transition: border .15s;
+  }
+  .field input:focus, .field select:focus { border-color: #1e40af; box-shadow: 0 0 0 3px rgba(30,64,175,.12); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .checks { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .check-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px; background: #f8fafc; font-size: 14px; }
+  .check-item .icon { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+  .check-item.ok .icon { background: #dcfce7; color: #16a34a; }
+  .check-item.err .icon { background: #fee2e2; color: #dc2626; }
+  .check-item .msg { color: #64748b; font-size: 12px; margin-left: auto; text-align: right; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 24px; border: none;
+    border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all .15s; }
+  .btn-primary { background: #1e40af; color: #fff; }
+  .btn-primary:hover { background: #1e3a8a; }
+  .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+  .btn-ghost { background: transparent; color: #64748b; }
+  .btn-ghost:hover { background: #f1f5f9; }
+  .actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+  .tip { font-size: 13px; color: #94a3b8; margin-top: 6px; }
+  .alert { padding: 12px 14px; border-radius: 8px; font-size: 14px; margin-bottom: 16px; }
+  .alert-error { background: #fee2e2; color: #b91c1c; }
+  .alert-success { background: #dcfce7; color: #15803d; }
+  .complete-box { text-align: center; padding: 16px 0; }
+  .complete-box .big { font-size: 52px; margin-bottom: 12px; }
+  .path-box { background: #f1f5f9; border: 1px dashed #94a3b8; border-radius: 8px; padding: 12px 16px;
+    font-family: Consolas, monospace; font-size: 15px; color: #1e40af; margin: 12px 0 20px; word-break: break-all; user-select: all; }
+  .hidden { display: none !important; }
+  .loader { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
+    border-radius: 50%; animation: spin .8s linear infinite; margin-right: 8px; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <h1>MessagePusher 安装向导</h1>
+    <p>消息推送平台 - 只需几步即可完成初始化</p>
+  </div>
+  <div class="body">
+    <div class="step-nav" id="stepNav">
+      <div class="step-dot active" data-step="0"></div>
+      <div class="step-dot" data-step="1"></div>
+      <div class="step-dot" data-step="2"></div>
+      <div class="step-dot" data-step="3"></div>
+      <div class="step-dot" data-step="4"></div>
+    </div>
+
+    <!-- Step 0: 欢迎 -->
+    <div class="step" id="step0">
+      <div class="title">欢迎使用 MessagePusher</div>
+      <div class="tip" style="font-size:14px; color:#475569; line-height:1.8;">
+        本向导将引导您完成：<br>
+        1. 检查运行环境<br>
+        2. 配置数据库 / 存储 / 队列<br>
+        3. 创建平台管理员账号<br>
+        4. 完成安装
+      </div>
+      <div class="actions"><button class="btn btn-primary" onclick="next(0)">开始安装</button></div>
+    </div>
+
+    <!-- Step 1: 环境检查 -->
+    <div class="step hidden" id="step1">
+      <div class="title">运行环境检查</div>
+      <div class="checks" id="envChecks"></div>
+      <div class="alert alert-error hidden" id="envError"></div>
+      <div class="actions">
+        <button class="btn btn-ghost" onclick="prev()">上一步</button>
+        <button class="btn btn-primary" id="btnEnvNext" onclick="next(1)">下一步</button>
+      </div>
+    </div>
+
+    <!-- Step 2: 配置 -->
+    <div class="step hidden" id="step2">
+      <div class="title">基础配置</div>
+      <div class="field">
+        <label>平台名称</label>
+        <input id="appName" value="MessagePusher">
+      </div>
+      <div class="field">
+        <label>访问地址 (Base URL)</label>
+        <input id="baseUrl" placeholder="https://push.example.com" value="http://localhost:8080">
+      </div>
+      <div class="field">
+        <label>数据库类型</label>
+        <select id="dbType" onchange="onDbTypeChange()">
+          <option value="sqlite">SQLite（本地 / 测试）</option>
+          <option value="postgres">PostgreSQL（生产）</option>
+        </select>
+      </div>
+      <div class="field hidden" id="sqliteField">
+        <label>SQLite 文件路径</label>
+        <input id="sqlitePath" value="./data/messagepusher.db">
+      </div>
+      <div class="hidden" id="pgFields">
+        <div class="row">
+          <div class="field"><label>主机</label><input id="pgHost" value="127.0.0.1"></div>
+          <div class="field"><label>端口</label><input id="pgPort" value="5432" type="number"></div>
+        </div>
+        <div class="field"><label>数据库名</label><input id="pgName" placeholder="messagepusher"></div>
+        <div class="row">
+          <div class="field"><label>用户</label><input id="pgUser" value="postgres"></div>
+          <div class="field"><label>密码</label><input id="pgPassword" type="password"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>消息记录存储</label>
+        <select id="storeType" onchange="onStoreTypeChange()">
+          <option value="sqlite">SQLite（与业务库同库，本地）</option>
+          <option value="clickhouse">ClickHouse（生产）</option>
+        </select>
+      </div>
+      <div class="field hidden" id="chField">
+        <label>ClickHouse DSN</label>
+        <input id="chDsn" placeholder="clickhouse://127.0.0.1:9000/messagepusher">
+      </div>
+      <div class="field">
+        <label>消息队列</label>
+        <select id="queueType" onchange="onQueueTypeChange()">
+          <option value="inprocess">进程内队列（本地）</option>
+          <option value="kafka">Kafka（生产）</option>
+        </select>
+      </div>
+      <div class="field hidden" id="kafkaField">
+        <label>Kafka Brokers（逗号分隔）</label>
+        <input id="kafkaBrokers" placeholder="127.0.0.1:9092">
+      </div>
+      <div class="row">
+        <div class="field"><label>消息保留天数</label><input id="retentionDays" value="90" type="number"></div>
+      </div>
+      <div class="field" style="margin-top:8px;">
+        <label>Redis（可选，留空 = 纯内存模式）</label>
+        <input id="redisAddr" placeholder="127.0.0.1:6379" oninput="onRedisChange()">
+      </div>
+      <div class="row hidden" id="redisFields">
+        <div class="field"><label>密码</label><input id="redisPassword" type="password"></div>
+        <div class="field"><label>DB</label><input id="redisDb" value="0" type="number"></div>
+      </div>
+      <div class="tip">配置 Redis 后启用分布式限流 / 多实例共享熔断状态 / 幂等加速</div>
+      <div class="actions">
+        <button class="btn btn-ghost" onclick="prev()">上一步</button>
+        <button class="btn btn-primary" id="btnInit" onclick="doInit()">初始化</button>
+      </div>
+    </div>
+
+    <!-- Step 3: 管理员 -->
+    <div class="step hidden" id="step3">
+      <div class="title">创建平台管理员</div>
+      <div class="field"><label>邮箱</label><input id="adminEmail" type="email" placeholder="admin@example.com"></div>
+      <div class="field"><label>昵称</label><input id="adminNickname" placeholder="Administrator"></div>
+      <div class="field"><label>密码（至少 8 位）</label><input id="adminPassword" type="password"></div>
+      <div class="alert alert-error hidden" id="adminError"></div>
+      <div class="actions">
+        <button class="btn btn-ghost" onclick="prev()">上一步</button>
+        <button class="btn btn-primary" id="btnAdmin" onclick="doAdmin()">创建账号</button>
+      </div>
+    </div>
+
+    <!-- Step 4: 完成 -->
+    <div class="step hidden" id="step4">
+      <div class="complete-box">
+        <div class="big">🎉</div>
+        <div class="title" style="margin-bottom:4px;">安装完成</div>
+        <div class="tip" style="font-size:14px; margin-bottom:8px;">请妥善保存管理员后台地址（随机路径，请勿泄露）：</div>
+        <div class="path-box" id="adminPathBox"></div>
+        <div class="tip" style="font-size:13px; margin-bottom:20px;">删除 install.lock 文件可重新安装</div>
+        <button class="btn btn-primary" onclick="location.href='/';" style="width:100%;">进入平台</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = { adminPath: '', dbType: 'sqlite', storeType: 'sqlite', queueType: 'inprocess' };
+let currentStep = 0;
+
+function next(step) {
+  if (step === 1) runEnvCheck();
+  showStep(step);
+}
+function prev() { showStep(currentStep - 1); }
+
+function showStep(n) {
+  currentStep = n;
+  for (let i = 0; i < 5; i++) {
+    document.getElementById('step' + i).classList.toggle('hidden', i !== n);
+    const dot = document.querySelector('.step-dot[data-step="' + i + '"]');
+    dot.className = 'step-dot' + (i < n ? ' done' : '') + (i === n ? ' active' : '');
+  }
+}
+
+function onDbTypeChange() {
+  state.dbType = document.getElementById('dbType').value;
+  document.getElementById('sqliteField').classList.toggle('hidden', state.dbType !== 'sqlite');
+  document.getElementById('pgFields').classList.toggle('hidden', state.dbType !== 'postgres');
+}
+function onStoreTypeChange() {
+  state.storeType = document.getElementById('storeType').value;
+  document.getElementById('chField').classList.toggle('hidden', state.storeType !== 'clickhouse');
+}
+function onQueueTypeChange() {
+  state.queueType = document.getElementById('queueType').value;
+  document.getElementById('kafkaField').classList.toggle('hidden', state.queueType !== 'kafka');
+}
+function onRedisChange() {
+  document.getElementById('redisFields').classList.toggle('hidden', !document.getElementById('redisAddr').value.trim());
+}
+
+async function api(path, body) {
+  const res = await fetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : '{}'
+  });
+  const data = await res.json().catch(() => ({}));
+  if (data.code !== 0) throw new Error(data.message || ('HTTP ' + res.status));
+  return data.data;
+}
+
+async function runEnvCheck() {
+  const box = document.getElementById('envChecks');
+  const errBox = document.getElementById('envError');
+  const btn = document.getElementById('btnEnvNext');
+  box.innerHTML = '<div class="check-item"><div class="icon" style="background:#fef9c3;color:#a16207">…</div>正在检查…</div>';
+  errBox.classList.add('hidden');
+  btn.disabled = true;
+  try {
+    const req = {
+      db_type: state.dbType,
+      sqlite_path: document.getElementById('sqlitePath').value,
+      pg: pgInfo(),
+      store_type: state.storeType,
+      ch_dsn: document.getElementById('chDsn').value,
+      queue_type: state.queueType,
+      kafka_brokers: document.getElementById('kafkaBrokers').value
+    };
+    const data = await api('/api/install/env-check', req);
+    box.innerHTML = '';
+    let allOk = true;
+    for (const c of data.checks) {
+      if (!c.ok) allOk = false;
+      box.innerHTML += '<div class="check-item ' + (c.ok ? 'ok' : 'err') + '"><div class="icon">' +
+        (c.ok ? '✓' : '✗') + '</div>' + c.name + '<span class="msg">' + (c.msg || '') + '</span></div>';
+    }
+    if (!allOk) { errBox.textContent = '存在未通过项，请检查配置后重试。'; errBox.classList.remove('hidden'); }
+    btn.disabled = !allOk;
+  } catch (e) {
+    box.innerHTML = '';
+    errBox.textContent = '检查失败: ' + e.message;
+    errBox.classList.remove('hidden');
+    btn.disabled = true;
+  }
+}
+
+function pgInfo() {
+  return {
+    host: document.getElementById('pgHost').value,
+    port: parseInt(document.getElementById('pgPort').value) || 5432,
+    user: document.getElementById('pgUser').value,
+    password: document.getElementById('pgPassword').value,
+    name: document.getElementById('pgName').value,
+    sslmode: 'disable'
+  };
+}
+
+async function doInit() {
+  const btn = document.getElementById('btnInit');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span>初始化中…';
+  try {
+    const data = await api('/api/install/init', {
+      app_name: document.getElementById('appName').value,
+      base_url: document.getElementById('baseUrl').value,
+      db_type: state.dbType,
+      sqlite_path: document.getElementById('sqlitePath').value,
+      pg: pgInfo(),
+      store_type: state.storeType,
+      ch_dsn: document.getElementById('chDsn').value,
+      queue_type: state.queueType,
+      kafka_brokers: document.getElementById('kafkaBrokers').value,
+      retention_days: parseInt(document.getElementById('retentionDays').value) || 90,
+      redis_addr: document.getElementById('redisAddr').value.trim(),
+      redis_password: document.getElementById('redisPassword').value,
+      redis_db: parseInt(document.getElementById('redisDb').value) || 0
+    });
+    state.adminPath = data.admin_path;
+    btn.innerHTML = '初始化';
+    showStep(3);
+  } catch (e) {
+    btn.innerHTML = '初始化';
+    alert('初始化失败: ' + e.message);
+  } finally { btn.disabled = false; }
+}
+
+async function doAdmin() {
+  const errBox = document.getElementById('adminError');
+  const btn = document.getElementById('btnAdmin');
+  errBox.classList.add('hidden');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loader"></span>创建中…';
+  try {
+    await api('/api/install/admin', {
+      email: document.getElementById('adminEmail').value,
+      nickname: document.getElementById('adminNickname').value,
+      password: document.getElementById('adminPassword').value
+    });
+    await api('/api/install/complete');
+    document.getElementById('adminPathBox').textContent = location.origin + '/' + state.adminPath + '/';
+    showStep(4);
+  } catch (e) {
+    errBox.textContent = e.message;
+    errBox.classList.remove('hidden');
+  } finally { btn.disabled = false; btn.innerHTML = '创建账号'; }
+}
+
+// 已安装则直接跳转。
+fetch('/api/install/status', { method: 'POST' })
+  .then(r => r.json())
+  .then(d => { if (d.data && d.data.installed) location.href = '/'; })
+  .catch(() => {});
+</script>
+</body>
+</html>

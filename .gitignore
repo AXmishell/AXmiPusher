@@ -1,0 +1,31 @@
+# 构建产物
+bin/
+*.exe
+*.log
+
+# 运行数据(本地模式)
+data/
+config.yaml
+install.lock
+
+# 部署凭据(绝不提交)
+deploy/server.local.json
+deploy/*.local*
+*.key
+*.pem
+*.p8
+
+# 前端
+web/user/node_modules/
+web/user/dist/
+web/admin/node_modules/
+web/admin/dist/
+
+# 编辑器/系统
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Playwright 截图
+.playwright-mcp/
