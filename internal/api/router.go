@@ -38,6 +38,7 @@ func NewRouter(a *app.App) *gin.Engine {
 		response.OK(c, gin.H{
 			"status":    "ok",
 			"installed": isInstalled(),
+			"version":   "1.1.0-gitflow",
 			"redis":     redisStatus,
 			"limiter":   a.Limiter.Type(),
 			"breaker":   map[bool]string{true: "redis", false: "memory"}[a.RedisMode],
