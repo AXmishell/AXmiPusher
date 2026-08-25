@@ -16,8 +16,13 @@ try {
     if ($v) { $version = "1.0.0-$v" }
 } catch { }
 
-Write-Host "[1/4] 构建产物(build-artifacts)..."
+Write-Host "[1/4] 构建产物(build-artifacts + web 前端托管程序)..."
 & powershell -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "build-artifacts.ps1") -AdminPath $AdminPath | Out-Null
+Push-Location $root
+$env:CGO_ENABLED = "0"; $env:GOOS = "linux"; $env:GOARCH = "amd64"
+go build -o bin/web-linux ./cmd/web
+Remove-Item Env:CGO_ENABLED, Env:GOOS, Env:GOARCH
+Pop-Location
 
 Write-Host "[2/4] 组装安装包目录..."
 $pkgDir = Join-Path $root (Join-Path $OutDir "messagepusher-install-$version")
@@ -29,6 +34,7 @@ Copy-Item (Join-Path $ctxDir "web") $pkgDir -Recurse
 Copy-Item (Join-Path $ctxDir "Dockerfile") $pkgDir
 Copy-Item (Join-Path $ctxDir "docker-compose.single.yml") $pkgDir
 Copy-Item (Join-Path $PSScriptRoot "install.sh") $pkgDir
+Copy-Item (Join-Path $root "bin\web-linux") (Join-Path $pkgDir "web") -Force
 Set-Content (Join-Path $pkgDir "VERSION") $version -Encoding ASCII
 
 # 安装说明

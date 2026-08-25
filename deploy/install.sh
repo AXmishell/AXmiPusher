@@ -78,7 +78,36 @@ EOF
     echo "[错误] 服务启动失败, 查看日志: journalctl -u messagepusher -n 50"
     exit 1
   fi
-  echo "[binary] 服务已启动 (systemd: messagepusher)"
+  echo "[binary] API 服务已启动 (systemd: messagepusher, :$PORT)"
+
+  # 可选: 前端独立端口托管程序(用户中心/管理后台/API 反代)。
+  if [[ -x "$INSTALL_DIR/web" ]]; then
+    chmod +x "$INSTALL_DIR/web"
+    cat > /etc/systemd/system/messagepusher-web.service <<EOF
+[Unit]
+Description=MessagePusher Web Frontend
+After=network.target messagepusher.service
+
+[Service]
+Type=simple
+WorkingDirectory=$INSTALL_DIR
+ExecStart=$INSTALL_DIR/web
+Restart=always
+RestartSec=3
+Environment=MP_USER_PORT=19876
+Environment=MP_ADMIN_PORT=19877
+Environment=MP_API_TARGET=http://127.0.0.1:$PORT
+Environment=MP_USER_DIST=$INSTALL_DIR/web/user
+Environment=MP_ADMIN_DIST=$INSTALL_DIR/web/admin
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    systemctl daemon-reload
+    systemctl enable messagepusher-web >/dev/null 2>&1 || true
+    systemctl restart messagepusher-web
+    echo "[binary] 前端托管已启动 (systemd: messagepusher-web, 用户中心 :19876 / 管理后台 :19877)"
+  fi
 }
 
 install_docker() {

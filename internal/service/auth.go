@@ -23,6 +23,7 @@ var (
 	ErrBadCredential = errors.New("邮箱或密码错误")
 	ErrUserDisabled  = errors.New("账号已被禁用")
 	ErrKeyExists     = errors.New("key 已存在")
+	ErrBadOldPass    = errors.New("旧密码不正确")
 )
 
 // jwtClaims JWT 载荷。
@@ -116,6 +117,31 @@ func (s *AuthService) Login(email, password string) (*models.User, error) {
 	now := time.Now()
 	s.db.Model(&user).Update("last_login_at", &now)
 	return &user, nil
+}
+
+// ChangePassword 修改密码。
+// 密码用 bcrypt 存储(bcrypt 自动生成随机盐并嵌入哈希串, 无需额外处理盐)。
+func (s *AuthService) ChangePassword(userID uint64, oldPassword, newPassword string) error {
+	if err := validatePassword(newPassword); err != nil {
+		return err
+	}
+	var user models.User
+	if err := s.db.First(&user, userID).Error; err != nil {
+		return err
+	}
+	// 验证旧密码。
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(oldPassword)); err != nil {
+		return ErrBadOldPass
+	}
+	// 新旧一致直接成功(幂等)。
+	if oldPassword == newPassword {
+		return nil
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), 10)
+	if err != nil {
+		return err
+	}
+	return s.db.Model(&user).Update("password_hash", string(hash)).Error
 }
 
 // CreateToken 签发 JWT。

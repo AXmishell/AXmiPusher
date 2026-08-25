@@ -11,15 +11,18 @@ import {
   SettingOutlined,
   LogoutOutlined,
   SafetyCertificateOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 import { Dropdown, Space, Avatar } from 'antd';
 import { useEffect, useState } from 'react';
 import { request, type User } from '../api/client';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 
 export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
+  const [pwdOpen, setPwdOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('mp_admin_token');
@@ -72,8 +75,15 @@ export default function MainLayout() {
         render: (_: any, dom: React.ReactNode) => (
           <Dropdown
             menu={{
-              items: [{ key: 'logout', icon: <LogoutOutlined />, label: '退出登录' }],
-              onClick: ({ key }) => key === 'logout' && logout(),
+              items: [
+                { key: 'password', icon: <LockOutlined />, label: '修改密码' },
+                { type: 'divider' },
+                { key: 'logout', icon: <LogoutOutlined />, label: '退出登录' },
+              ],
+              onClick: ({ key }) => {
+                if (key === 'password') setPwdOpen(true);
+                if (key === 'logout') logout();
+              },
             }}
           >
             {dom}
@@ -89,6 +99,7 @@ export default function MainLayout() {
       layout="mix"
     >
       <Outlet />
+      <ChangePasswordModal open={pwdOpen} onClose={() => setPwdOpen(false)} />
     </ProLayout>
   );
 }

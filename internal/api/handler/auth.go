@@ -2,10 +2,13 @@
 package handler
 
 import (
+	"errors"
+
 	"messagepusher/internal/app"
 	"messagepusher/internal/api/middleware"
 	"messagepusher/internal/models"
 	"messagepusher/internal/pkg/response"
+	"messagepusher/internal/service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -69,6 +72,38 @@ func Login(a *app.App) gin.HandlerFunc {
 			return
 		}
 		response.OK(c, gin.H{"token": token, "user": user})
+	}
+}
+
+// changePasswordRequest 修改密码请求。
+type changePasswordRequest struct {
+	OldPassword string `json:"old_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required"`
+}
+
+// ChangePassword 修改当前用户密码(登录态)。
+func ChangePassword(a *app.App) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user := middleware.CurrentUser(c)
+		if user == nil {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		var req changePasswordRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.BadRequest(c, "参数错误: "+err.Error())
+			return
+		}
+		if err := a.Auth.ChangePassword(user.ID, req.OldPassword, req.NewPassword); err != nil {
+			if errors.Is(err, service.ErrBadOldPass) {
+				response.BadRequest(c, "旧密码不正确")
+			} else {
+				response.BadRequest(c, err.Error())
+			}
+			return
+		}
+		Audit(a.DB, c, user.ID, user.Email, "auth.change_password", gin.H{"user_id": user.ID})
+		response.OK(c, gin.H{"ok": true})
 	}
 }
 

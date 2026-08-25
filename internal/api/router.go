@@ -55,6 +55,7 @@ func NewRouter(a *app.App) *gin.Engine {
 			auth.POST("/register", handler.Register(a))
 			auth.POST("/login", handler.Login(a))
 			auth.GET("/me", middleware.RequireAuth(getAuth), handler.Me(a))
+			auth.POST("/change-password", middleware.RequireAuth(getAuth), handler.ChangePassword(a))
 		}
 
 		// API Key 管理(登录态)。

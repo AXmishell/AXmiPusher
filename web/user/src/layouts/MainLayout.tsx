@@ -13,10 +13,12 @@ import {
   ThunderboltOutlined,
   MailOutlined,
   CarryOutOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 import { Dropdown, Space, Avatar, Badge } from 'antd';
 import { useEffect, useState } from 'react';
 import { request, type User, type Tenant } from '../api/client';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 
 export default function MainLayout() {
   const navigate = useNavigate();
@@ -24,6 +26,7 @@ export default function MainLayout() {
   const [user, setUser] = useState<User | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [unread, setUnread] = useState(0);
+  const [pwdOpen, setPwdOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('mp_token');
@@ -88,8 +91,15 @@ export default function MainLayout() {
         render: (_: any, dom: React.ReactNode) => (
           <Dropdown
             menu={{
-              items: [{ key: 'logout', icon: <LogoutOutlined />, label: '退出登录' }],
-              onClick: ({ key }) => key === 'logout' && logout(),
+              items: [
+                { key: 'password', icon: <LockOutlined />, label: '修改密码' },
+                { type: 'divider' },
+                { key: 'logout', icon: <LogoutOutlined />, label: '退出登录' },
+              ],
+              onClick: ({ key }) => {
+                if (key === 'password') setPwdOpen(true);
+                if (key === 'logout') logout();
+              },
             }}
           >
             {dom}
@@ -107,6 +117,7 @@ export default function MainLayout() {
       layout="mix"
     >
       <Outlet />
+      <ChangePasswordModal open={pwdOpen} onClose={() => setPwdOpen(false)} />
     </ProLayout>
   );
 }
