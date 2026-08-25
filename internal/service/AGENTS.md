@@ -7,7 +7,7 @@
 ## 服务总览
 | 服务 | 职责 | 依赖 |
 |---|---|---|
-| AuthService | 注册/登录/JWT/API Key | db, config |
+| AuthService | 注册/登录/JWT/API Key/改密 | db, config |
 | MessageService | 发送受理链路(幂等→限流→渲染→入队) | db, store.MessageStore, queue.Queue, RateLimiter |
 | BatchService | 批量任务后台 runner | db, MessageService |
 | PaymentService | 易支付下单/验签/回调/订阅生效 | db, SettingsService |

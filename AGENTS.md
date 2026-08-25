@@ -10,12 +10,12 @@
 ## STRUCTURE
 ```
 messagepusher/
-├── cmd/             # 3 入口: api(HTTP+本地内嵌消费者) / worker(独立消费者) / redis-mock(开发工具)
+├── cmd/             # 4 入口: api(HTTP+本地内嵌消费者) / worker(独立消费者) / web(前端托管双端口) / redis-mock(开发工具)
 ├── internal/        # 全部后端: app(组合根) + api/channel/compat/config/db/models/pkg/queue/service/store/worker
 ├── web/
-│   ├── user/        # 用户中心 (Vite+React+AntD Pro, :5173)
-│   └── admin/       # 管理后台 (同上, :5174, 随机路径 base)
-├── deploy/          # Docker compose + 部署脚本 + context/(产物提交)
+│   ├── user/        # 用户中心 (Vite+React+AntD Pro, :19876 生产 / :5173 dev)
+│   └── admin/       # 管理后台 (同上, :19877 生产 / :5174 dev, 随机路径 base)
+├── deploy/          # 安装分发(install.sh/pack-install.ps1) + 部署编排(cloud/docker) + context/(产物提交)
 ├── scripts/         # 本地工具: hook-receiver.ps1(:9090) / mock-smtp.ps1(:2525)
 ├── migrations/      # 空目录(建表走 GORM AutoMigrate, 无版本化迁移)
 └── openapi.yaml     # API 规范
@@ -30,6 +30,8 @@ messagepusher/
 | 安装向导 | internal/app/install.go + install.html | 由 app 包承载(非 api) |
 | 支付/订阅 | internal/service/payment.go | 易支付 MD5 签名 |
 | 前端页面 | web/{user,admin}/src/pages/ | ProTable 模式 |
+| 前端托管 | cmd/web/ | 独立双端口 19876/19877, 读 config.yaml |
+| 安装分发 | deploy/install.sh + pack-install.ps1 | 详见 deploy/AGENTS.md |
 | 部署编排 | deploy/context/ | 单机 compose + 产物 |
 
 ## CODE MAP
@@ -52,6 +54,8 @@ messagepusher/
 - 管理后台随机路径: 构建期 admin base 必须等于运行期 `MP_ADMIN_PATH`(默认约定 b322aa9602150d0c)
 - 列表接口对齐 AntD Pro 分页: `current/pageSize` 请求, `{data,total,success}` 响应
 - 幂等: request_id + DB 唯一索引兜底 + Redis SETNX 加速
+- **端口固化**: 主程序 8080 / 用户中心 19876 / 管理后台 19877, 由安装向导写入 config.yaml(web.user_port/admin_port/api_target); cmd/web 读配置, 优先级 MP_* env > config.yaml > 默认
+- 密码: bcrypt 加盐存储(golang.org/x/crypto/bcrypt), 改密走 POST /api/v1/auth/change-password(登录态)
 - 部署产物(deploy/context/api + web dist)提交入库; 凭据/运行态绝不提交
 
 ## ANTI-PATTERNS (THIS PROJECT)
@@ -74,6 +78,7 @@ messagepusher/
 ```bash
 # 后端(本地模式: SQLite + 进程内队列, 内嵌消费者)
 go run ./cmd/api                  # :8080
+go run ./cmd/web                  # 前端托管(读 config.yaml: 用户中心 :19876 / 管理后台 :19877)
 go run ./cmd/redis-mock           # 模拟 Redis :16379(可选)
 
 # 前端
@@ -86,8 +91,8 @@ go test ./...
 # 构建部署产物(本地, 供 git 提交)
 powershell -File deploy/build-artifacts.ps1 -AdminPath b322aa9602150d0c
 
-# 单机 Docker 编排部署
-powershell -File deploy/docker-deploy.ps1
+# 打包可分发安装包
+powershell -File deploy/pack-install.ps1    # 输出 dist-install/messagepusher-install-*.tar.gz
 
 # 云端 git 部署流
 git push cloud deploy
@@ -106,3 +111,4 @@ powershell -File scripts/hook-receiver.ps1 # :9090 → data/hook.log
 - 进程内队列在进程重启时丢弃在途消息(生产切 Kafka 消除)
 - git remote: `cloud`(云 bare repo) + `origin`(Gitee 备份); ~/.ssh/config 有 `mpcloud` 别名
 - 云部署: Debian12 1C/1G, 单机 compose(api+redis), 数据在 /opt/messagepusher-docker/appdata
+- 端口规划: 主程序 8080(api, 统一路由 / + /{admin}/ + /api) / 用户中心 19876 / 管理后台 19877(cmd/web)
