@@ -201,6 +201,13 @@ func (a *App) handleInstallInit(c *gin.Context) {
 		cfg.Redis.Password = req.RedisPassword
 		cfg.Redis.DB = req.RedisDB
 	}
+	// 端口固化: 主程序 8080 / 用户中心 19876 / 管理后台 19877。
+	if cfg.Server.Port <= 0 {
+		cfg.Server.Port = 8080
+	}
+	cfg.Web.UserPort = 19876
+	cfg.Web.AdminPort = 19877
+	cfg.Web.APITarget = fmt.Sprintf("http://127.0.0.1:%d", cfg.Server.Port)
 
 	// 校验 PG/Kafka 配置正确性(只做格式校验)。
 	if cfg.Database.Type == "postgres" && (cfg.Database.Host == "" || cfg.Database.Name == "") {

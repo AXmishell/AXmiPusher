@@ -28,10 +28,13 @@ type Config struct {
 	Web        WebConfig        `yaml:"web"`
 }
 
-// WebConfig 前端静态资源目录(生产模式由 Go 托管)。
+// WebConfig 前端托管配置(用户中心/管理后台端口固化)。
 type WebConfig struct {
 	UserDist  string `yaml:"user_dist"`  // 用户中心构建产物目录
 	AdminDist string `yaml:"admin_dist"` // 管理员后台构建产物目录(base 为 /{admin_path}/)
+	UserPort  int    `yaml:"user_port"`  // 用户中心端口(默认 19876)
+	AdminPort int    `yaml:"admin_port"` // 管理后台端口(默认 19877)
+	APITarget string `yaml:"api_target"` // cmd/web 的 API 反代目标(默认 http://127.0.0.1:{server.port})
 }
 
 // AppConfig 应用基础配置。
@@ -281,6 +284,16 @@ func (c *Config) applyDefaults() {
 		t := true
 		c.Redis.FallbackInMemory = &t
 	}
+	// Web 端口固化: 用户中心 19876 / 管理后台 19877。
+	if c.Web.UserPort <= 0 {
+		c.Web.UserPort = 19876
+	}
+	if c.Web.AdminPort <= 0 {
+		c.Web.AdminPort = 19877
+	}
+	if c.Web.APITarget == "" {
+		c.Web.APITarget = fmt.Sprintf("http://127.0.0.1:%d", c.Server.Port)
+	}
 }
 
 // applyEnv 用环境变量覆盖配置(部署优先)。
@@ -345,6 +358,15 @@ func (c *Config) applyEnv() {
 	}
 	if v := os.Getenv("MP_ADMIN_DIST"); v != "" {
 		c.Web.AdminDist = v
+	}
+	if v := os.Getenv("MP_USER_PORT"); v != "" {
+		fmt.Sscanf(v, "%d", &c.Web.UserPort)
+	}
+	if v := os.Getenv("MP_ADMIN_PORT"); v != "" {
+		fmt.Sscanf(v, "%d", &c.Web.AdminPort)
+	}
+	if v := os.Getenv("MP_API_TARGET"); v != "" {
+		c.Web.APITarget = v
 	}
 	if v := os.Getenv("MP_PORT"); v != "" {
 		fmt.Sscanf(v, "%d", &c.Server.Port)

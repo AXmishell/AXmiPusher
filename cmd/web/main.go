@@ -1,15 +1,18 @@
 // 前端托管主程序(双端口): 用户中心 + 管理后台独立端口, 各自反代 /api 到主程序。
 //
-// 端口规划(环境变量可覆盖):
-//   MP_USER_PORT   用户中心端口   默认 19876   (路由: / 用户中心, /api 反代)
-//   MP_ADMIN_PORT  管理后台端口   默认 19877   (路由: /{admin_path}/ 管理后台, /api 反代)
-//   MP_API_TARGET  后端 API 地址   默认 http://127.0.0.1:8080(主程序)
-//   MP_USER_DIST   用户中心 dist   默认 web/user/dist
-//   MP_ADMIN_DIST  管理后台 dist   默认 web/admin/dist
-//   MP_ADMIN_PATH  管理后台随机路径 默认 b322aa9602150d0c(须与 admin 构建 base 一致)
+// 端口固化在 config.yaml(安装向导写入, 默认: 主程序 8080 / 用户中心 19876 / 管理后台 19877):
+//   server:
+//     port: 8080
+//   web:
+//     user_port: 19876
+//     admin_port: 19877
+//     api_target: http://127.0.0.1:8080
+//     user_dist: web/user/dist
+//     admin_dist: web/admin/dist
+//   admin:
+//     random_path: <随机串>
 //
-// 主程序(api :8080)负责统一路径: / 用户中心, /{admin_path}/ 管理后台, /api API。
-// 本程序提供两个独立端口直连前端, 便于内网访问/独立部署, 不依赖主程序托管。
+// 优先级: MP_* 环境变量 > config.yaml > 默认值(与主程序一致)。
 package main
 
 import (
@@ -19,20 +22,42 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+
+	"messagepusher/internal/config"
 )
 
 func main() {
-	userPort := env("MP_USER_PORT", "19876")
-	adminPort := env("MP_ADMIN_PORT", "19877")
-	userDist := env("MP_USER_DIST", "web/user/dist")
-	adminDist := env("MP_ADMIN_DIST", "web/admin/dist")
-	adminPath := strings.Trim(env("MP_ADMIN_PATH", "b322aa9602150d0c"), "/")
-	apiTarget := env("MP_API_TARGET", "http://127.0.0.1:8080")
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("加载配置失败: %v", err)
+	}
+
+	userPort := cfg.Web.UserPort
+	adminPort := cfg.Web.AdminPort
+	userDist := cfg.Web.UserDist
+	adminDist := cfg.Web.AdminDist
+	apiTarget := cfg.Web.APITarget
+	adminPath := strings.Trim(cfg.Admin.RandomPath, "/")
+
+	// 空值兜底(配置未写时)。
+	if userDist == "" {
+		userDist = "web/user/dist"
+	}
+	if adminDist == "" {
+		adminDist = "web/admin/dist"
+	}
+	if apiTarget == "" {
+		apiTarget = "http://127.0.0.1:8080"
+	}
+	if adminPath == "" {
+		adminPath = "b322aa9602150d0c"
+	}
 
 	apiURL, err := url.Parse(apiTarget)
 	if err != nil {
-		log.Fatalf("MP_API_TARGET 无效: %v", err)
+		log.Fatalf("api_target 无效: %v", err)
 	}
 
 	adminPrefix := "/" + adminPath + "/"
@@ -51,14 +76,14 @@ func main() {
 
 	// 双端口并发监听。
 	go func() {
-		log.Printf("用户中心  : http://0.0.0.0:%s  (dist: %s)", userPort, userDist)
-		if err := http.ListenAndServe(":"+userPort, userMux); err != nil {
-			log.Fatalf("用户中心端口 %s 退出: %v", userPort, err)
+		log.Printf("用户中心  : http://0.0.0.0:%d  (dist: %s)", userPort, userDist)
+		if err := http.ListenAndServe(":"+strconv.Itoa(userPort), userMux); err != nil {
+			log.Fatalf("用户中心端口 %d 退出: %v", userPort, err)
 		}
 	}()
-	log.Printf("管理后台  : http://0.0.0.0:%s%s  (dist: %s, API→%s)", adminPort, adminPrefix, adminDist, apiTarget)
-	if err := http.ListenAndServe(":"+adminPort, adminMux); err != nil {
-		log.Fatalf("管理后台端口 %s 退出: %v", adminPort, err)
+	log.Printf("管理后台  : http://0.0.0.0:%d%s  (dist: %s, API→%s)", adminPort, adminPrefix, adminDist, apiTarget)
+	if err := http.ListenAndServe(":"+strconv.Itoa(adminPort), adminMux); err != nil {
+		log.Fatalf("管理后台端口 %d 退出: %v", adminPort, err)
 	}
 }
 
@@ -84,11 +109,4 @@ func spaHandler(distDir, stripPrefix string) http.Handler {
 		}
 		fs.ServeHTTP(w, r)
 	})
-}
-
-func env(key, def string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return def
 }
