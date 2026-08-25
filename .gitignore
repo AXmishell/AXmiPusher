@@ -8,17 +8,22 @@ data/
 config.yaml
 install.lock
 
-# 部署凭据(绝不提交)
+# 部署凭据与运行状态(绝不提交)
 deploy/server.local.json
 deploy/*.local*
 *.key
 *.pem
 *.p8
 
+# 部署运行目录: 本地敏感/动态内容(部署产物 deploy/context/api 与 web 需提交)
+deploy/context/.env
+deploy/context/appdata/
+deploy/context.tar.gz
+
 # 前端
 web/user/node_modules/
-web/user/dist/
 web/admin/node_modules/
+web/user/dist/
 web/admin/dist/
 
 # 编辑器/系统
@@ -29,3 +34,6 @@ Thumbs.db
 
 # Playwright 截图
 .playwright-mcp/
+
+# �Ự/���ߺۼ�
+.omo/
