@@ -19,28 +19,32 @@ const (
 )
 
 // Worker 消费发送任务。
+// 注意: store 与 registry 用惰性 getter —— 安装 Reinit 后会重建实例,
+// 若构造时快照, 消费会写进旧 store(消息卡 PENDING) — 已踩坑。
 type Worker struct {
-	store    store.MessageStore
-	registry *channel.Registry
+	getStore    func() store.MessageStore
+	getRegistry func() *channel.Registry
 }
 
 // New 创建 Worker。
-func New(st store.MessageStore, registry *channel.Registry) *Worker {
-	return &Worker{store: st, registry: registry}
+func New(getStore func() store.MessageStore, getRegistry func() *channel.Registry) *Worker {
+	return &Worker{getStore: getStore, getRegistry: getRegistry}
 }
 
 // Handle 处理单个发送任务(带同步重试)。
 func (w *Worker) Handle(ctx context.Context, msg *queue.TaskMessage) {
+	st := w.getStore()
+	reg := w.getRegistry()
 	start := time.Now()
-	w.store.UpdateStatus(ctx, msg.MessageID, models.MsgSending, "")
-	w.store.SaveEvent(ctx, &store.MessageEvent{MessageID: msg.MessageID, EventType: models.EventSending, CreatedAt: time.Now()})
+	st.UpdateStatus(ctx, msg.MessageID, models.MsgSending, "")
+	st.SaveEvent(ctx, &store.MessageEvent{MessageID: msg.MessageID, EventType: models.EventSending, CreatedAt: time.Now()})
 
 	var err error
 	attempt := 0
 	for attempt <= maxRetries {
 		if attempt > 0 {
-			w.store.UpdateStatus(ctx, msg.MessageID, models.MsgRetrying, "")
-			w.store.SaveEvent(ctx, &store.MessageEvent{
+			st.UpdateStatus(ctx, msg.MessageID, models.MsgRetrying, "")
+			st.SaveEvent(ctx, &store.MessageEvent{
 				MessageID: msg.MessageID, EventType: models.EventRetry,
 				Detail: fmt.Sprintf("第 %d 次重试", attempt), CreatedAt: time.Now(),
 			})
@@ -50,7 +54,7 @@ func (w *Worker) Handle(ctx context.Context, msg *queue.TaskMessage) {
 			case <-time.After(retryBackoff * time.Duration(attempt)):
 			}
 		}
-		err = w.registry.Dispatch(ctx, msg)
+		err = reg.Dispatch(ctx, msg)
 		if err == nil {
 			break
 		}
@@ -64,14 +68,14 @@ func (w *Worker) Handle(ctx context.Context, msg *queue.TaskMessage) {
 
 	cost := time.Since(start).Milliseconds()
 	if err != nil {
-		w.store.UpdateStatus(ctx, msg.MessageID, models.MsgDead, err.Error())
-		w.store.SaveEvent(ctx, &store.MessageEvent{
+		st.UpdateStatus(ctx, msg.MessageID, models.MsgDead, err.Error())
+		st.SaveEvent(ctx, &store.MessageEvent{
 			MessageID: msg.MessageID, EventType: models.EventDead, Detail: err.Error(), CreatedAt: time.Now(),
 		})
 		return
 	}
-	w.store.UpdateStatus(ctx, msg.MessageID, models.MsgSuccess, "")
-	w.store.SaveEvent(ctx, &store.MessageEvent{
+	st.UpdateStatus(ctx, msg.MessageID, models.MsgSuccess, "")
+	st.SaveEvent(ctx, &store.MessageEvent{
 		MessageID: msg.MessageID, EventType: models.EventSuccess,
 		Detail: fmt.Sprintf("耗时 %dms", cost), CreatedAt: time.Now(),
 	})

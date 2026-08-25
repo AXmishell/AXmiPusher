@@ -187,10 +187,10 @@ func (a *App) Reinit(cfg *config.Config) error {
 }
 
 // StartConsumer 启动消费者循环(本地模式由 api 进程调用; 生产模式由 worker 进程调用)。
-// 阻塞直到 ctx 取消。
+// 阻塞直到 ctx 取消。worker 每次消费动态取最新 store/registry(Reinit 后生效)。
 func (a *App) StartConsumer(ctx context.Context) error {
-	w := worker.New(a.Store, a.Registry)
 	return a.Queue.Subscribe(ctx, func(c context.Context, msg *queue.TaskMessage) error {
+		w := worker.New(func() store.MessageStore { return a.Store }, func() *channel.Registry { return a.Registry })
 		w.Handle(c, msg)
 		return nil
 	})
