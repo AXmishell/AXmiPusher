@@ -1,5 +1,4 @@
-// API 服务入口: 提供核心 API + 兼容层 + 安装向导。
-// 本地模式下同时内嵌消费者。
+// API 服务入口: 提供核心 API + 兼容层 + 安装向导, 同时内嵌数据库轮询消费者。
 package main
 
 import (
@@ -36,15 +35,13 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// 本地模式: 进程内启动消费者。
-	if cfg.Queue.Type == "inprocess" {
-		go func() {
-			log.Printf("本地模式: 启动进程内消费者(%d 并发)", cfg.Queue.Concurrency)
-			if err := a.StartConsumer(ctx); err != nil {
-				log.Printf("消费者退出: %v", err)
-			}
-		}()
-	}
+	// 数据库轮询消费者(单一队列实现, api 进程恒消费)。
+	go func() {
+		log.Printf("启动数据库轮询消费者(轮询间隔=%v 批量=%d 并发=%d)", cfg.Queue.PollInterval, cfg.Queue.BatchSize, cfg.Queue.Concurrency)
+		if err := a.StartConsumer(ctx); err != nil {
+			log.Printf("消费者退出: %v", err)
+		}
+	}()
 
 	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	srv := &http.Server{

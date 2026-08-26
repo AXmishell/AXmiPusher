@@ -63,23 +63,23 @@ func (a *App) Build() error {
 	}
 	a.DB = gdb
 
-	// 消息记录存储。
-	switch cfg.Store.Type {
-	case "sqlite":
-		st, err := store.NewSQLiteStore(gdb)
-		if err != nil {
-			return err
-		}
-		a.Store = st
-	default:
-		return fmt.Errorf("不支持的存储类型: %s", cfg.Store.Type)
+	// 消息记录存储(本地/生产统一 SQLite 存储)。
+	st, err := store.NewSQLiteStore(gdb)
+	if err != nil {
+		return err
 	}
+	a.Store = st
 
-	// 消息队列。
-	switch cfg.Queue.Type {
-	default:
-		return fmt.Errorf("不支持的队列类型: %s", cfg.Queue.Type)
-	}
+	// 消息队列(数据库轮询, 单一实现)。
+	// getStore 传惰性函数: Reinit 重建 store 后仍取最新实例, 避免快照旧库导致消息无人消费。
+	a.Queue = queue.NewDBQueue(
+		func() store.MessageStore { return a.Store }, // 惰性 getter, 不可快照
+		time.Duration(cfg.Queue.PollInterval)*time.Millisecond,
+		cfg.Queue.BatchSize,
+		cfg.Queue.Concurrency,
+		cfg.Queue.MaxClaimAttempts,
+		time.Duration(cfg.Queue.ClaimTimeout)*time.Second,
+	)
 
 	// 服务。
 	a.Auth = service.NewAuthService(gdb, cfg)
@@ -154,10 +154,11 @@ func (a *App) setupRedis() error {
 }
 
 // Reinit 用新配置重建全部组件(安装程序写入配置后调用)。
-// 注意: 同类型队列会保留 —— 消费者已订阅旧队列实例, 重建会导致消息无人消费。
+// 注意: DBQueue 恒保留 —— 消费者已订阅旧队列实例, 重建会导致消息无人消费;
+// 且 DBQueue 持惰性 getStore, 重建 store 后仍经 getter 取最新实例(惰性 getter 约定)。
 func (a *App) Reinit(cfg *config.Config) error {
 	var keepQueue queue.Queue
-	if a.Queue != nil && a.Queue.Type() == cfg.Queue.Type {
+	if a.Queue != nil {
 		keepQueue = a.Queue
 	}
 	if a.Store != nil {
