@@ -31,7 +31,7 @@ ssh mpcloud "sudo -u postgres psql -c 'DROP DATABASE IF EXISTS messagepusher;' \
 ssh mpcloud "redis-cli -a '<密码>' --no-auth-warning FLUSHALL"
 ```
 
-### 1.3 清空本地模式 SQLite(如用本地测试)
+### 1.3 清空本机 SQLite 测试库(如用本地测试)
 
 ```powershell
 Remove-Item data\messagepusher.db* -Force

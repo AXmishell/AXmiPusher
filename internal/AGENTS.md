@@ -11,6 +11,7 @@
 - queue: 数据库轮询队列(DBQueue, 消息写库即入队, 无独立队列中间件)。
 - store: 消息存储与业务库同库(GORM)。
 - api 单进程承载全部组件, 内置数据库轮询消费者(app.StartConsumer)。
+- 深层文档: internal/{queue,store,worker}/AGENTS.md 记录各自核心语义与踩坑(租约/方言分支/惰性 getter)。
 
 ## 消息流转
 

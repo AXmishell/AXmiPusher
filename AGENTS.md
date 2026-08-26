@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE — AXmiPusher
 
-**Generated:** 2026-08-26 20:10
-**Commit:** c85c39b
+**Generated:** 2026-08-26 21:40
+**Commit:** a6c23b1
 **Branch:** deploy
 
 ## OVERVIEW
@@ -15,7 +15,7 @@ AXmiPusher/
 ├── web/
 │   ├── user/        # 用户中心 (Vite+React+AntD Pro, :19876 生产 / :5173 dev)
 │   └── admin/       # 管理后台 (同上, :19877 生产 / :5174 dev, 随机路径 base)
-├── deploy/          # 安装分发(install.sh/pack-install.ps1) + 云端编译部署脚本 + context/(安装包产物, 不入库)
+├── deploy/          # 安装分发(install.sh/pack-install.ps1/build-release.sh) + 云端编译部署脚本 + context/(安装包源文件, Dockerfile/compose 已入库)
 ├── scripts/         # 本地工具: hook-receiver.ps1(:9090) / mock-smtp.ps1(:2525)
 ├── .github/         # GitHub Actions: ci.yml(编译检查) + release.yml(推 v* tag 自动发布安装包)
 ├── migrations/      # 空目录(建表走 GORM AutoMigrate, 无版本化迁移)
@@ -37,6 +37,7 @@ AXmiPusher/
 | 安装分发 | deploy/install.sh + pack-install.ps1 | 详见 deploy/AGENTS.md |
 | 部署编排 | deploy/cloud-build-deploy.sh | 云端编译流(git push → 云端 go/npm build) |
 | CI 编译检查 | .github/workflows/ci.yml | push main/deploy 自动跑 go+前端构建 |
+| 发布 Release | .github/workflows/release.yml + deploy/build-release.sh | 推 v* tag 自动构建 Linux amd64 安装包并发布 GitHub Releases |
 
 ## CODE MAP
 | Symbol | Type | Location | Role |
