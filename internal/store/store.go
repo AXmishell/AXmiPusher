@@ -58,6 +58,10 @@ type MessageStore interface {
 	StatsByStatus(ctx context.Context, tenantID uint64, since, until time.Time) (map[string]int64, error)
 	// StatsByChannel 按渠道+状态统计(时间范围)。
 	StatsByChannel(ctx context.Context, tenantID uint64, since, until time.Time) (map[string]map[string]int64, error)
+	// ClaimPending 认领最多 limit 条 PENDING 消息(置为 SENDING 并刷新 updated_at 作租约), 返回被认领消息(含全量载荷)。
+	ClaimPending(ctx context.Context, limit int) ([]*Message, error)
+	// ReapStale 回收租约超时的 SENDING/RETRYING 消息: retry_count+1; 若 retry_count >= maxAttempts 置 DEAD, 否则复位 PENDING。返回处理条数。
+	ReapStale(ctx context.Context, lease time.Duration, maxAttempts int) (int64, error)
 	// Close 释放资源。
 	Close() error
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // storedMessage 消息记录表(GORM 模型, 本地模式复用业务库)。
@@ -17,12 +18,12 @@ type storedMessage struct {
 	Title      string    `gorm:"size:255" json:"title"`
 	Content    string    `gorm:"type:text" json:"content"`
 	Recipient  string    `gorm:"size:255;index" json:"recipient"`
-	Status     string    `gorm:"size:16;not null;index" json:"status"`
+	Status     string    `gorm:"size:16;not null;index:idx_messages_status;index:idx_status_updated,priority:1" json:"status"`
 	Error      string    `gorm:"size:1024" json:"error"`
 	RetryCount int       `gorm:"not null;default:0" json:"retry_count"`
 	CostMs     int64     `gorm:"not null;default:0" json:"cost_ms"`
 	CreatedAt  time.Time `gorm:"index:idx_tenant_created" json:"created_at"`
-	UpdatedAt  time.Time `json:"updated_at"`
+	UpdatedAt  time.Time `gorm:"index:idx_status_updated,priority:2" json:"updated_at"`
 }
 
 // storedMessageEvent 消息事件表。
@@ -172,6 +173,66 @@ func (s *SQLiteStore) StatsByChannel(ctx context.Context, tenantID uint64, since
 		out[r.Channel][r.Status] = r.Count
 	}
 	return out, nil
+}
+
+// claimQuery 构造认领查询: postgres 分支附加 FOR UPDATE SKIP LOCKED 行锁,
+// 保证多 worker 并发认领互斥(跳过已被锁定的行)。由 ClaimPending 与 PG 方言 SQL 形状测试共用。
+func claimQuery(db *gorm.DB, limit int) *gorm.DB {
+	q := db.Model(&storedMessage{}).
+		Where("status = 'PENDING'").
+		Order("message_id ASC").
+		Limit(limit)
+	if db.Dialector.Name() == "postgres" {
+		q = q.Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"})
+	}
+	return q
+}
+
+// ClaimPending 认领最多 limit 条 PENDING 消息(置为 SENDING 并刷新 updated_at 作租约), 返回被认领消息(含全量载荷)。
+// 事务内 SELECT + 逐条 UPDATE: postgres 行锁持有到提交, 防止并发重复认领; sqlite 单写连接天然串行。
+func (s *SQLiteStore) ClaimPending(ctx context.Context, limit int) ([]*Message, error) {
+	var recs []storedMessage
+	now := time.Now()
+	err := s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := claimQuery(tx, limit).Find(&recs).Error; err != nil {
+			return err
+		}
+		for i := range recs {
+			if err := tx.Model(&storedMessage{}).
+				Where("message_id = ?", recs[i].MessageID).
+				Updates(map[string]any{"status": "SENDING", "updated_at": now}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*Message, 0, len(recs))
+	for i := range recs {
+		out = append(out, fromStored(&recs[i]))
+	}
+	return out, nil
+}
+
+// ReapStale 回收租约超时的 SENDING/RETRYING 消息: retry_count+1; 若 retry_count+1 >= maxAttempts 置 DEAD, 否则复位 PENDING。
+// updated_at 过期判断用 GORM 参数绑定传 time.Time(与写入格式一致), 不做字符串拼接。
+func (s *SQLiteStore) ReapStale(ctx context.Context, lease time.Duration, maxAttempts int) (int64, error) {
+	cutoff := time.Now().Add(-lease)
+	res := s.db.WithContext(ctx).Exec(
+		`UPDATE messages SET
+			status = CASE WHEN retry_count+1 >= ? THEN 'DEAD' ELSE 'PENDING' END,
+			error = CASE WHEN retry_count+1 >= ? THEN '认领超限(数据库队列)' ELSE error END,
+			retry_count = retry_count + 1,
+			updated_at = ?
+		WHERE status IN ('SENDING','RETRYING') AND updated_at < ?`,
+		maxAttempts, maxAttempts, time.Now(), cutoff,
+	)
+	if res.Error != nil {
+		return 0, res.Error
+	}
+	return res.RowsAffected, nil
 }
 
 // Close 释放资源。

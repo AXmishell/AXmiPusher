@@ -71,12 +71,6 @@ func (a *App) Build() error {
 			return err
 		}
 		a.Store = st
-	case "clickhouse":
-		st, err := store.NewClickHouseStore(cfg.Store.DSN)
-		if err != nil {
-			return err
-		}
-		a.Store = st
 	default:
 		return fmt.Errorf("不支持的存储类型: %s", cfg.Store.Type)
 	}
