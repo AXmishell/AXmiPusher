@@ -208,6 +208,13 @@ func (a *App) handleInstallInit(c *gin.Context) {
 	cfg.Web.UserPort = 19876
 	cfg.Web.AdminPort = 19877
 	cfg.Web.APITarget = fmt.Sprintf("http://127.0.0.1:%d", cfg.Server.Port)
+	// 前端 dist 目录固化(主程序托管与 cmd/web 均读此配置; 缺省时前端 404)。
+	if cfg.Web.UserDist == "" {
+		cfg.Web.UserDist = "web/user/dist"
+	}
+	if cfg.Web.AdminDist == "" {
+		cfg.Web.AdminDist = "web/admin/dist"
+	}
 
 	// 校验 PG/Kafka 配置正确性(只做格式校验)。
 	if cfg.Database.Type == "postgres" && (cfg.Database.Host == "" || cfg.Database.Name == "") {
