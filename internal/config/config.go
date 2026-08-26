@@ -3,11 +3,14 @@
 package config
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -52,9 +55,9 @@ type ServerConfig struct {
 	Port int    `yaml:"port"`
 }
 
-// DatabaseConfig 业务数据库配置(生产 PG / 本地 SQLite)。
+// DatabaseConfig 业务数据库配置(生产 PG / MySQL / 本地 SQLite)。
 type DatabaseConfig struct {
-	Type       string `yaml:"type"` // postgres | sqlite
+	Type       string `yaml:"type"` // postgres | mysql | sqlite
 	Host       string `yaml:"host"`
 	Port       int    `yaml:"port"`
 	User       string `yaml:"user"`
@@ -395,7 +398,54 @@ func (c *Config) DSN() (string, error) {
 	case "postgres":
 		return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 			c.Database.Host, c.Database.Port, c.Database.User, c.Database.Password, c.Database.Name, c.Database.SSLMode), nil
+	case "mysql":
+		port := c.Database.Port
+		if port <= 0 {
+			port = 3306
+		}
+		// MySQL 5.7 兼容: utf8mb4 + parseTime 必须; loc=Local 避免时区偏移。
+		return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&parseTime=True&loc=Local",
+			c.Database.User, c.Database.Password, c.Database.Host, port, c.Database.Name), nil
 	default:
 		return "", fmt.Errorf("不支持的数据库类型: %s", c.Database.Type)
 	}
+}
+
+// adminPathRe 管理后台随机路径合法字符: 仅大小写字母与数字, 8-32 位。
+var adminPathRe = regexp.MustCompile(`^[A-Za-z0-9]{8,32}$`)
+
+// adminPathReserved 与系统路由冲突的保留字, 自定义路径不允许使用。
+// /api/* 与 /install 由路由树与 NoRoute 独占; assets/login/register 会被用户中心 SPA 路由占用。
+var adminPathReserved = map[string]bool{
+	"api": true, "install": true, "assets": true, "login": true, "register": true,
+}
+
+// ValidateAdminPath 校验管理后台自定义路径: 去首尾斜杠后要求 8-32 位大小写字母或数字,
+// 且不得与系统保留字冲突。返回规范化后的路径(无斜杠)。
+func ValidateAdminPath(p string) (string, error) {
+	p = strings.TrimSpace(strings.Trim(p, "/"))
+	if p == "" {
+		return "", errors.New("后台路径不能为空")
+	}
+	if !adminPathRe.MatchString(p) {
+		return "", errors.New("后台路径仅限 8-32 位大小写字母或数字")
+	}
+	if adminPathReserved[strings.ToLower(p)] {
+		return "", errors.New("后台路径与系统保留路径冲突: " + p)
+	}
+	return p, nil
+}
+
+// GenerateRandomAdminPath 生成 16 位大小写字母数字混合的随机后台路径(满足 ValidateAdminPath 校验)。
+// 由安装向导与"随机轮换"共用, 字符集 62 种, 优于纯 hex 的 16 种(同长度熵更高)。
+func GenerateRandomAdminPath() (string, error) {
+	const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	buf := make([]byte, 16)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	for i := range buf {
+		buf[i] = chars[int(buf[i])%len(chars)]
+	}
+	return string(buf), nil
 }
