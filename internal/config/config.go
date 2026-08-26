@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -14,18 +15,17 @@ import (
 
 // Config 平台全局配置。
 type Config struct {
-	App        AppConfig        `yaml:"app"`
-	Database   DatabaseConfig   `yaml:"database"`
-	Queue      QueueConfig      `yaml:"queue"`
-	Store      StoreConfig      `yaml:"store"`
-	Auth       AuthConfig       `yaml:"auth"`
-	Admin      AdminConfig      `yaml:"admin"`
-	RateLimit  RateLimitConfig  `yaml:"ratelimit"`
-	Retention  RetentionConfig  `yaml:"retention"`
-	Epay       EpayConfig       `yaml:"epay"`
-	Server     ServerConfig     `yaml:"server"`
-	Redis      RedisConfig      `yaml:"redis"`
-	Web        WebConfig        `yaml:"web"`
+	App       AppConfig       `yaml:"app"`
+	Database  DatabaseConfig  `yaml:"database"`
+	Queue     QueueConfig     `yaml:"queue"`
+	Auth      AuthConfig      `yaml:"auth"`
+	Admin     AdminConfig     `yaml:"admin"`
+	RateLimit RateLimitConfig `yaml:"ratelimit"`
+	Retention RetentionConfig `yaml:"retention"`
+	Epay      EpayConfig      `yaml:"epay"`
+	Server    ServerConfig    `yaml:"server"`
+	Redis     RedisConfig     `yaml:"redis"`
+	Web       WebConfig       `yaml:"web"`
 }
 
 // WebConfig 前端托管配置(用户中心/管理后台端口固化)。
@@ -40,7 +40,6 @@ type WebConfig struct {
 // AppConfig 应用基础配置。
 type AppConfig struct {
 	Name        string `yaml:"name"`
-	Env         string `yaml:"env"` // local | production
 	DataDir     string `yaml:"data_dir"`
 	BaseURL     string `yaml:"base_url"`
 	UserWebURL  string `yaml:"user_web_url"`
@@ -65,31 +64,26 @@ type DatabaseConfig struct {
 	SQLitePath string `yaml:"sqlite_path"`
 }
 
-// QueueConfig 消息队列配置(生产 Kafka / 本地 inprocess)。
+// QueueConfig 数据库轮询队列配置(替代原 Kafka/inprocess 队列)。
 type QueueConfig struct {
-	Type    string   `yaml:"type"` // kafka | inprocess
-	Brokers []string `yaml:"brokers"`
-	Topic   string   `yaml:"topic"`
-	GroupID string   `yaml:"group_id"`
-	// 进程内队列缓冲大小
-	BufferSize int `yaml:"buffer_size"`
-	// 消费者并发数
+	// PollInterval 轮询间隔(毫秒, 默认 500)。
+	PollInterval int `yaml:"poll_interval"`
+	// BatchSize 每批拉取的消息数(默认 100)。
+	BatchSize int `yaml:"batch_size"`
+	// ClaimTimeout 消息认领超时(秒, 默认 300)。
+	ClaimTimeout int `yaml:"claim_timeout"`
+	// MaxClaimAttempts 消息最大认领次数(默认 5)。
+	MaxClaimAttempts int `yaml:"max_claim_attempts"`
+	// 消费者并发数(默认 4)。
 	Concurrency int `yaml:"concurrency"`
-}
-
-// StoreConfig 消息记录存储配置(生产 ClickHouse / 本地 sqlite)。
-type StoreConfig struct {
-	Type    string `yaml:"type"` // clickhouse | sqlite
-	DSN     string `yaml:"dsn"`
-	DBName  string `yaml:"db_name"`
 }
 
 // AuthConfig 认证配置。
 type AuthConfig struct {
-	JWTSecret     string        `yaml:"jwt_secret"`
-	TokenTTL      time.Duration `yaml:"token_ttl"`
-	APIKeyPrefix  string        `yaml:"api_key_prefix"`
-	BcryptCost    int           `yaml:"bcrypt_cost"`
+	JWTSecret    string        `yaml:"jwt_secret"`
+	TokenTTL     time.Duration `yaml:"token_ttl"`
+	APIKeyPrefix string        `yaml:"api_key_prefix"`
+	BcryptCost   int           `yaml:"bcrypt_cost"`
 }
 
 // AdminConfig 管理员后台随机路径配置(安全隐藏, 非 /admin)。
@@ -124,7 +118,7 @@ type EpayConfig struct {
 // RedisConfig Redis 单机配置(可选)。
 // 留空 Addr = 纯内存模式(限流/熔断用进程内实现)。
 type RedisConfig struct {
-	Addr             string `yaml:"addr"`   // 127.0.0.1:6379
+	Addr             string `yaml:"addr"` // 127.0.0.1:6379
 	Password         string `yaml:"password"`
 	DB               int    `yaml:"db"`
 	PoolSize         int    `yaml:"pool_size"`
@@ -137,13 +131,24 @@ const FilePath = "config.yaml"
 // Load 加载配置: 先读配置文件, 再用环境变量覆盖, 最后套默认值。
 // 配置文件不存在时不视为错误(安装前状态)。
 func Load() (*Config, error) {
+	data, err := os.ReadFile(FilePath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return ParseConfig(nil)
+		}
+		return nil, fmt.Errorf("读取配置文件失败: %w", err)
+	}
+	return ParseConfig(data)
+}
+
+// ParseConfig 解析配置内容: yaml 反序列化 → 环境变量覆盖 → 默认值兜底。
+// 与 Load 语义一致, 供测试与直接解析配置内容的调用方使用; data 为空时仅套默认值。
+func ParseConfig(data []byte) (*Config, error) {
 	cfg := defaultConfig()
-	if data, err := os.ReadFile(FilePath); err == nil {
+	if len(data) > 0 {
 		if err := yaml.Unmarshal(data, cfg); err != nil {
 			return nil, fmt.Errorf("解析配置文件失败: %w", err)
 		}
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("读取配置文件失败: %w", err)
 	}
 	cfg.applyEnv()
 	cfg.applyDefaults()
@@ -196,7 +201,6 @@ func defaultConfig() *Config {
 	return &Config{
 		App: AppConfig{
 			Name:    "messagepusher",
-			Env:     "local",
 			DataDir: "./data",
 		},
 		Server: ServerConfig{Host: "0.0.0.0", Port: 8080},
@@ -206,13 +210,12 @@ func defaultConfig() *Config {
 			SSLMode:    "disable",
 		},
 		Queue: QueueConfig{
-			Type:        "inprocess",
-			Topic:       "messages",
-			GroupID:     "worker",
-			BufferSize:  1024,
-			Concurrency: 4,
+			PollInterval:     500,
+			BatchSize:        100,
+			ClaimTimeout:     300,
+			MaxClaimAttempts: 5,
+			Concurrency:      4,
 		},
-		Store: StoreConfig{Type: "sqlite"},
 		Auth: AuthConfig{
 			TokenTTL:     24 * time.Hour,
 			APIKeyPrefix: "mp_",
@@ -232,9 +235,6 @@ func (c *Config) applyDefaults() {
 	if c.App.Name == "" {
 		c.App.Name = d.App.Name
 	}
-	if c.App.Env == "" {
-		c.App.Env = d.App.Env
-	}
 	if c.App.DataDir == "" {
 		c.App.DataDir = d.App.DataDir
 	}
@@ -247,17 +247,20 @@ func (c *Config) applyDefaults() {
 	if c.Database.Type == "sqlite" && c.Database.SQLitePath == "" {
 		c.Database.SQLitePath = d.Database.SQLitePath
 	}
-	if c.Queue.Type == "" {
-		c.Queue.Type = d.Queue.Type
+	if c.Queue.PollInterval <= 0 {
+		c.Queue.PollInterval = d.Queue.PollInterval
 	}
-	if c.Queue.BufferSize <= 0 {
-		c.Queue.BufferSize = d.Queue.BufferSize
+	if c.Queue.BatchSize <= 0 {
+		c.Queue.BatchSize = d.Queue.BatchSize
+	}
+	if c.Queue.ClaimTimeout <= 0 {
+		c.Queue.ClaimTimeout = d.Queue.ClaimTimeout
+	}
+	if c.Queue.MaxClaimAttempts <= 0 {
+		c.Queue.MaxClaimAttempts = d.Queue.MaxClaimAttempts
 	}
 	if c.Queue.Concurrency <= 0 {
 		c.Queue.Concurrency = d.Queue.Concurrency
-	}
-	if c.Store.Type == "" {
-		c.Store.Type = d.Store.Type
 	}
 	if c.Auth.TokenTTL <= 0 {
 		c.Auth.TokenTTL = d.Auth.TokenTTL
@@ -298,9 +301,6 @@ func (c *Config) applyDefaults() {
 
 // applyEnv 用环境变量覆盖配置(部署优先)。
 func (c *Config) applyEnv() {
-	if v := os.Getenv("MP_ENV"); v != "" {
-		c.App.Env = v
-	}
 	if v := os.Getenv("MP_DB_TYPE"); v != "" {
 		c.Database.Type = v
 	}
@@ -322,17 +322,31 @@ func (c *Config) applyEnv() {
 	if v := os.Getenv("MP_SQLITE_PATH"); v != "" {
 		c.Database.SQLitePath = v
 	}
-	if v := os.Getenv("MP_QUEUE_TYPE"); v != "" {
-		c.Queue.Type = v
+	// 数据库轮询队列: 非零值才覆盖(零值/非法值回退默认)。
+	if v := os.Getenv("MP_QUEUE_POLL_INTERVAL"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			c.Queue.PollInterval = n
+		}
 	}
-	if v := os.Getenv("MP_KAFKA_BROKERS"); v != "" {
-		c.Queue.Brokers = splitCSV(v)
+	if v := os.Getenv("MP_QUEUE_BATCH_SIZE"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			c.Queue.BatchSize = n
+		}
 	}
-	if v := os.Getenv("MP_STORE_TYPE"); v != "" {
-		c.Store.Type = v
+	if v := os.Getenv("MP_QUEUE_CLAIM_TIMEOUT"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			c.Queue.ClaimTimeout = n
+		}
 	}
-	if v := os.Getenv("MP_CH_DSN"); v != "" {
-		c.Store.DSN = v
+	if v := os.Getenv("MP_QUEUE_MAX_CLAIM_ATTEMPTS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			c.Queue.MaxClaimAttempts = n
+		}
+	}
+	if v := os.Getenv("MP_QUEUE_CONCURRENCY"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			c.Queue.Concurrency = n
+		}
 	}
 	if v := os.Getenv("MP_JWT_SECRET"); v != "" {
 		c.Auth.JWTSecret = v
@@ -371,25 +385,6 @@ func (c *Config) applyEnv() {
 	if v := os.Getenv("MP_PORT"); v != "" {
 		fmt.Sscanf(v, "%d", &c.Server.Port)
 	}
-}
-
-func splitCSV(s string) []string {
-	var out []string
-	cur := ""
-	for _, r := range s {
-		if r == ',' {
-			if cur != "" {
-				out = append(out, cur)
-			}
-			cur = ""
-			continue
-		}
-		cur += string(r)
-	}
-	if cur != "" {
-		out = append(out, cur)
-	}
-	return out
 }
 
 // DSN 返回 GORM 使用的数据库连接串。
