@@ -17,6 +17,7 @@ export interface User {
   status: string;
   quota?: string;
   plan_id?: number;
+  created_at?: string;
 }
 
 export interface Admin {

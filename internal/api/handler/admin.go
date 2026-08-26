@@ -2,6 +2,7 @@ package handler
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"axmipusher/internal/app"
@@ -9,6 +10,7 @@ import (
 	"axmipusher/internal/pkg/response"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // ListUsers 用户列表。
@@ -31,6 +33,59 @@ func ListUsers(a *app.App) gin.HandlerFunc {
 			return
 		}
 		response.OK(c, gin.H{"data": users, "total": total, "success": true})
+	}
+}
+
+// CreateUser 新增用户(管理后台创建, 默认角色 tenant_user, 状态 active)。
+func CreateUser(a *app.App) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req struct {
+			Email    string `json:"email" binding:"required"`
+			Nickname string `json:"nickname"`
+			Password string `json:"password" binding:"required"`
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.BadRequest(c, "参数错误: "+err.Error())
+			return
+		}
+		req.Email = strings.TrimSpace(req.Email)
+		if !strings.Contains(req.Email, "@") {
+			response.BadRequest(c, "邮箱格式不正确")
+			return
+		}
+		if len(req.Password) < 8 {
+			response.BadRequest(c, "密码长度至少 8 位")
+			return
+		}
+		nickname := strings.TrimSpace(req.Nickname)
+		if nickname == "" {
+			nickname = req.Email // 与注册逻辑一致: 用户名默认邮箱
+		}
+		var cnt int64
+		a.DB.Model(&models.User{}).Where("email = ?", req.Email).Count(&cnt)
+		if cnt > 0 {
+			response.Conflict(c, "邮箱已被占用")
+			return
+		}
+		hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), 10)
+		if err != nil {
+			response.ServerError(c, "密码加密失败")
+			return
+		}
+		user := models.User{
+			Email:        req.Email,
+			PasswordHash: string(hash),
+			Nickname:     nickname,
+			Role:         models.RoleTenantUser,
+			Status:       models.StatusActive,
+		}
+		if err := a.DB.Create(&user).Error; err != nil {
+			response.Conflict(c, "创建失败: "+err.Error())
+			return
+		}
+		Audit(a.DB, c, currentAdminID(c), currentAdminEmail(c), "user.create",
+			gin.H{"user_id": user.ID, "email": req.Email})
+		response.OK(c, gin.H{"id": user.ID, "email": user.Email})
 	}
 }
 
@@ -64,6 +119,79 @@ func SetUserStatus(a *app.App) gin.HandlerFunc {
 		}
 		Audit(a.DB, c, currentAdminID(c), currentAdminEmail(c), "user.set_status",
 			gin.H{"user_id": id, "status": req.Status})
+		response.OK(c, gin.H{"ok": true})
+	}
+}
+
+// UpdateUser 编辑用户资料(邮箱/用户名)与重置密码。
+// 字段留空表示不修改; password 非空则重置为 bcrypt 新哈希(用户下次登录用新密码)。
+func UpdateUser(a *app.App) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+		if err != nil {
+			response.BadRequest(c, "无效的用户 ID")
+			return
+		}
+		var req struct {
+			Email    string `json:"email"`
+			Nickname string `json:"nickname"`
+			Password string `json:"password"` // 非空则重置密码
+		}
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.BadRequest(c, "参数错误: "+err.Error())
+			return
+		}
+		var user models.User
+		if err := a.DB.First(&user, id).Error; err != nil {
+			response.NotFound(c, "用户不存在")
+			return
+		}
+		if user.Role == models.RolePlatformAdmin {
+			response.Forbidden(c, "不能编辑平台管理员")
+			return
+		}
+		updates := map[string]interface{}{}
+		// 邮箱: 格式 + 唯一性(排除自身)。
+		if req.Email != "" && req.Email != user.Email {
+			if !strings.Contains(req.Email, "@") {
+				response.BadRequest(c, "邮箱格式不正确")
+				return
+			}
+			var cnt int64
+			a.DB.Model(&models.User{}).Where("email = ? AND id != ?", req.Email, id).Count(&cnt)
+			if cnt > 0 {
+				response.Conflict(c, "邮箱已被占用")
+				return
+			}
+			updates["email"] = req.Email
+		}
+		// 用户名。
+		if req.Nickname != "" && req.Nickname != user.Nickname {
+			updates["nickname"] = req.Nickname
+		}
+		// 重置密码。
+		if req.Password != "" {
+			if len(req.Password) < 8 {
+				response.BadRequest(c, "新密码长度至少 8 位")
+				return
+			}
+			hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), 10)
+			if err != nil {
+				response.ServerError(c, "密码加密失败")
+				return
+			}
+			updates["password_hash"] = string(hash)
+		}
+		if len(updates) == 0 {
+			response.BadRequest(c, "没有需要更新的字段")
+			return
+		}
+		if err := a.DB.Model(&user).Updates(updates).Error; err != nil {
+			response.ServerError(c, "保存失败: "+err.Error())
+			return
+		}
+		Audit(a.DB, c, currentAdminID(c), currentAdminEmail(c), "user.update",
+			gin.H{"user_id": id, "email_changed": req.Email != "", "nickname_changed": req.Nickname != "", "password_reset": req.Password != ""})
 		response.OK(c, gin.H{"ok": true})
 	}
 }
