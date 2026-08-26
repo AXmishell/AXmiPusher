@@ -31,10 +31,12 @@ deploy/
 
 ## CONVENTIONS
 - **产物一律本地构建**(Go 交叉编译 + npm build), 服务器/容器内禁止构建 — 1G 内存 OOM
-- admin dist 构建 base 必须 = 运行期 MP_ADMIN_PATH(部署默认 b322aa9602150d0c)
+- admin dist 用相对 base('./') 构建(路径无关, 支持任意前缀与运行期轮换); build-artifacts.ps1 不设 MP_ADMIN_BASE — 旧约定"构建 base 必须=MP_ADMIN_PATH(b322aa9602150d0c)"已废弃
 - 端口固化: config.yaml 写 server.port=8080 / web.user_port=19876 / web.admin_port=19877(安装向导写入)
 - 凭据/运行态绝不提交: server.local.json、*.key/pem/p8、context/.env、context/appdata、dist-install/
 - context/ 的 api 二进制与 web dist 需提交入库(部署用), .env 与 appdata 除外
+- compose 环境要求: 全栈 docker-compose.yml 需 `.env` 设 `MP_JWT_SECRET`(`${:?}` 缺失即失败); 单机 docker-compose.single.yml 需 `REDIS_PASSWORD`
+- Dockerfile 双模式: 根 Dockerfile=源码构建(全栈用, golang:1.26 与 go.mod 1.25 偏差); deploy/context/Dockerfile=二进制拷贝(单机用, 容器内不构建防 OOM)
 
 ## ANTI-PATTERNS (已踩坑)
 - Windows tar 打包会丢执行位 → install.sh 前置检查用 `-f` 并统一 `chmod +x`

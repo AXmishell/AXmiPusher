@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE — messagepusher
 
-**Generated:** 2026-08-26 00:59
-**Commit:** 23bbccb
+**Generated:** 2026-08-26 12:00
+**Commit:** 1f5532f
 **Branch:** deploy
 
 ## OVERVIEW
@@ -51,7 +51,8 @@ messagepusher/
 - 配置优先级: `MP_*` 环境变量 > config.yaml > 默认值 (internal/config)
 - 接口+双实现模式: Queue/Store/RateLimiter/Breaker 均内存(本地)与 Redis/Kafka/ClickHouse(生产)可插拔
 - 鉴权: 网页端 JWT(Authorization Bearer), 服务端 API Key(mp_ 前缀, SHA-256 哈希存库); 中间件用惰性 getAuth 闭包(容器 Reinit 后取最新实例)
-- 管理后台随机路径: 构建期 admin base 必须等于运行期 `MP_ADMIN_PATH`(默认约定 b322aa9602150d0c)
+- 管理后台随机路径: **admin 前端构建用相对 base('./'), 运行时任意前缀可用且支持轮换**(安装向导从 dist index.html 解析 base 兜底); 旧约定"构建 base 必须=MP_ADMIN_PATH"已废弃
+- 配置契约: `config.yaml` 路径硬编码 CWD(无 env 覆盖); 25 个 `MP_*` env(MP_ENV/MP_DB_*/MP_QUEUE_TYPE/MP_KAFKA_*/MP_STORE_TYPE/MP_CH_DSN/MP_JWT_SECRET/MP_ADMIN_PATH/MP_REDIS_*/MP_USER_PORT/MP_ADMIN_PORT/MP_API_TARGET/MP_PORT); config.yaml 由安装向导生成, 缺失=未安装(503+/install)
 - 列表接口对齐 AntD Pro 分页: `current/pageSize` 请求, `{data,total,success}` 响应
 - 幂等: request_id + DB 唯一索引兜底 + Redis SETNX 加速
 - **端口固化**: 主程序 8080 / 用户中心 19876 / 管理后台 19877, 由安装向导写入 config.yaml(web.user_port/admin_port/api_target); cmd/web 读配置, 优先级 MP_* env > config.yaml > 默认
@@ -62,8 +63,11 @@ messagepusher/
 - **绝不提交**: *.key/*.pem/*.p8, deploy/server.local.json, deploy/*.local*, config.yaml(含 JWT 密钥), install.lock, data/, *.log
 - 后台 goroutine 不得用请求 ctx(HTTP 结束即取消 → 消息丢) — 必须 context.Background()
 - 不要重建同类型队列实例(消费者订阅旧实例, 重建后消息无人消费) — 已踩坑
+- worker 不得在构造时快照 store/registry(Reinit 后写进旧 store → 消息卡 PENDING) — 必须惰性 getter — 已踩坑
 - 模板存在"待审核版本"时禁止修改内容
 - Gin 根级 catch-all(`/*filepath`)与 /api 路由冲突 panic — 前端托管用 NoRoute 兜底
+- NoRoute 排除路径必须精确匹配 `/api` 或 `/api/` 前缀, 不能简单 `HasPrefix("/api")`(误伤 /api-keys 等 SPA 路由) — 已踩坑
+- 轮换 admin 随机路径后必须动态注册新前缀路由 + 同步前端相对 base(否则新路径 404)
 - smtpSend 必须设连接 deadline(非 SMTP 端口会永久阻塞 worker) — 已踩坑
 - Vite 代理只写 `/api/v1`, 勿扩成 `/api`(误伤 /api-keys 等 SPA 路由)
 - 服务器/容器内禁止 go/node 构建(1G 内存 OOM) — 产物一律本地构建
@@ -71,7 +75,7 @@ messagepusher/
 ## UNIQUE STYLES
 - 响应体: `{code:0,message:"ok",data}`; 业务码 0/40000/40100/40300/40400/40900/42900/50000; 消息发送受理返回 HTTP 202
 - 消息状态机: PENDING→SENDING→SUCCESS/FAILED/RETRYING/DEAD/CANCELLED; 熔断错误不重试直接 DEAD
-- 安装向导: install.lock 门控, 未安装时业务 API 返回 503, 引导 /install
+- 安装向导: install.lock 门控, 未安装时业务 API 返回 503, 引导 /install; 5 步 POST /api/install/{status,env-check,init,admin,complete}
 - 兼容层: Server酱 v1(/api/sc/{key}.send) + v2(/api/sctapi/{key}.send), 返回格式照抄原版
 
 ## COMMANDS
@@ -109,6 +113,7 @@ powershell -File scripts/hook-receiver.ps1 # :9090 → data/hook.log
 - handler/rand.go 命名误导: 实为共享助手(CurrentUser/randomHex)
 - internal/install/ 为空死目录; migrations/ 空(生产 PG 建议补版本化迁移)
 - 进程内队列在进程重启时丢弃在途消息(生产切 Kafka 消除)
-- git remote: `cloud`(云 bare repo) + `origin`(Gitee 备份); ~/.ssh/config 有 `mpcloud` 别名
-- 云部署: Debian12 1C/1G, 单机 compose(api+redis), 数据在 /opt/messagepusher-docker/appdata
+- git remote: `cloud`(云 bare repo) + `origin`(Gitee 备份); ~/.ssh/config 有 `mpcloud` 别名(86.53.111.210:55244, 走 SOCKS5 代理推送)
+- 云部署: Debian12 1C/1G, binary 模式 systemd(api :8080)或单机 compose; PG 用户 mp / Redis 密码见 deploy/server.local.json
 - 端口规划: 主程序 8080(api, 统一路由 / + /{admin}/ + /api) / 用户中心 19876 / 管理后台 19877(cmd/web)
+- 前端无 lint/test 脚本, 唯一质量门 = `npm run build`(tsc -b + vite build); npm registry 固定 npmmirror; 无 lockfile 提交

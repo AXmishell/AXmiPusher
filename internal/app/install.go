@@ -267,7 +267,7 @@ func (a *App) handleInstallAdmin(c *gin.Context) {
 		return
 	}
 	var count int64
-	a.DB.Model(&models.User{}).Where("role = ?", models.RolePlatformAdmin).Count(&count)
+	a.DB.Model(&models.Admin{}).Count(&count)
 	if count > 0 {
 		response.Conflict(c, "平台管理员已存在")
 		return
@@ -277,19 +277,18 @@ func (a *App) handleInstallAdmin(c *gin.Context) {
 		response.ServerError(c, "密码加密失败")
 		return
 	}
-	user := models.User{
-		TenantID:     0,
+	admin := models.Admin{
 		Email:        req.Email,
 		PasswordHash: string(hash),
 		Nickname:     defaultIfEmpty(req.Nickname, "Administrator"),
-		Role:         models.RolePlatformAdmin,
+		Role:         models.AdminRoleSuper,
 		Status:       models.StatusActive,
 	}
-	if err := a.DB.Create(&user).Error; err != nil {
+	if err := a.DB.Create(&admin).Error; err != nil {
 		response.Conflict(c, "创建失败: "+err.Error())
 		return
 	}
-	response.OK(c, gin.H{"user_id": user.ID})
+	response.OK(c, gin.H{"admin_id": admin.ID})
 }
 
 func (a *App) handleInstallComplete(c *gin.Context) {

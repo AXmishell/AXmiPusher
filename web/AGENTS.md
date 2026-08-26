@@ -25,11 +25,11 @@
 
 ## 关键差异(admin vs user)
 
-- admin: `<BrowserRouter basename={import.meta.env.BASE_URL}>`, 适配部署在随机路径下的场景
+- admin: `<BrowserRouter basename={动态取当前路径第一段}>`, 适配部署在任意随机前缀下; 支持运行期轮换 admin 路径(无需重新构建)
 - user: 无 base, 直接挂在根路径
-- admin 构建必须设环境变量 `MP_ADMIN_BASE=/<随机串>/`(vite.config.ts 的 base), 且与后端 MP_ADMIN_PATH 一致
+- admin 构建用**相对 base('./')**(vite.config.ts: `MP_ADMIN_BASE || './'`), 资源与路由均相对当前前缀; 安装向导从 dist index.html 解析 base 兜底; 旧约定"MP_ADMIN_BASE=/<随机串>/ 且必须与 MP_ADMIN_PATH 一致"已废弃
 - token key: user 用 localStorage `mp_token`, admin 用 `mp_admin_token`
-- 401 跳登录: user 跳 `/login`(判断 startsWith), admin 跳 `${BASE_URL}login`(判断 endsWith)
+- 401 跳登录: user 跳 `/login`(判断 startsWith), admin 跳动态当前前缀 + `/login`(判断 endsWith)
 
 ## API 调用约定
 
@@ -45,6 +45,14 @@
 
 - vite 只代理 `/api/v1` → http://localhost:8080
 - 勿扩成 `/api`, 会误伤 `/api-keys` 等 SPA 前端路由(已踩坑)
+
+## 构建约定
+
+- 无 lint/test 脚本, 唯一质量门 = `npm run build`(`tsc -b && vite build`, 类型检查 + 产物)
+- tsconfig strict, 但 `noUnusedLocals/Parameters` 关闭(容忍死代码)
+- `.npmrc` 固定 registry=npmmirror(国内网络); 无 lockfile 提交
+- `allowScripts.esbuild` 白名单(pnpm-10 风格, 放行 esbuild postinstall)
+- 产物由 deploy/build-artifacts.ps1 本地构建后提交到 deploy/context/(勿在服务器/容器内构建)
 
 ## 维护注意
 

@@ -123,3 +123,19 @@ func currentUserEmail(c *gin.Context) string {
 	}
 	return ""
 }
+
+// currentAdminID 当前管理员 ID(未登录返回 0)。
+func currentAdminID(c *gin.Context) uint64 {
+	if a := CurrentAdmin(c); a != nil {
+		return a.ID
+	}
+	return 0
+}
+
+// currentAdminEmail 当前管理员邮箱。
+func currentAdminEmail(c *gin.Context) string {
+	if a := CurrentAdmin(c); a != nil {
+		return a.Email
+	}
+	return ""
+}

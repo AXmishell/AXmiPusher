@@ -50,7 +50,7 @@ func CreatePlan(a *app.App) gin.HandlerFunc {
 			response.ServerError(c, "创建失败")
 			return
 		}
-		Audit(a.DB, c, currentUserID(c), currentUserEmail(c), "plan.create", gin.H{"id": plan.ID, "name": plan.Name})
+		Audit(a.DB, c, currentAdminID(c), currentAdminEmail(c), "plan.create", gin.H{"id": plan.ID, "name": plan.Name})
 		response.OK(c, plan)
 	}
 }
@@ -79,7 +79,7 @@ func UpdatePlan(a *app.App) gin.HandlerFunc {
 			response.ServerError(c, "更新失败")
 			return
 		}
-		Audit(a.DB, c, currentUserID(c), currentUserEmail(c), "plan.update", gin.H{"id": id})
+		Audit(a.DB, c, currentAdminID(c), currentAdminEmail(c), "plan.update", gin.H{"id": id})
 		response.OK(c, gin.H{"ok": true})
 	}
 }
@@ -96,7 +96,7 @@ func DeletePlan(a *app.App) gin.HandlerFunc {
 			response.ServerError(c, "删除失败")
 			return
 		}
-		Audit(a.DB, c, currentUserID(c), currentUserEmail(c), "plan.delete", gin.H{"id": id})
+		Audit(a.DB, c, currentAdminID(c), currentAdminEmail(c), "plan.delete", gin.H{"id": id})
 		response.OK(c, gin.H{"ok": true})
 	}
 }

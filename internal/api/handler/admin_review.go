@@ -38,11 +38,11 @@ func ApproveReview(a *app.App) gin.HandlerFunc {
 			Note string `json:"note"`
 		}
 		c.ShouldBindJSON(&req)
-		if err := a.Templates.ApproveVersion(templateID, versionID, currentUserID(c), req.Note); err != nil {
+		if err := a.Templates.ApproveVersion(templateID, versionID, currentAdminID(c), req.Note); err != nil {
 			response.BadRequest(c, "批准失败: "+err.Error())
 			return
 		}
-		Audit(a.DB, c, currentUserID(c), currentUserEmail(c), "review.approve",
+		Audit(a.DB, c, currentAdminID(c), currentAdminEmail(c), "review.approve",
 			gin.H{"template_id": templateID, "version_id": versionID})
 		response.OK(c, gin.H{"ok": true})
 	}
@@ -64,11 +64,11 @@ func RejectReview(a *app.App) gin.HandlerFunc {
 			response.BadRequest(c, "请填写驳回原因")
 			return
 		}
-		if err := a.Templates.RejectVersion(templateID, versionID, currentUserID(c), req.Note); err != nil {
+		if err := a.Templates.RejectVersion(templateID, versionID, currentAdminID(c), req.Note); err != nil {
 			response.BadRequest(c, "驳回失败: "+err.Error())
 			return
 		}
-		Audit(a.DB, c, currentUserID(c), currentUserEmail(c), "review.reject",
+		Audit(a.DB, c, currentAdminID(c), currentAdminEmail(c), "review.reject",
 			gin.H{"template_id": templateID, "version_id": versionID, "note": req.Note})
 		response.OK(c, gin.H{"ok": true})
 	}

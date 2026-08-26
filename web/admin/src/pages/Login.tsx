@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Form, Input, Button, Card, Typography, message } from 'antd';
 import { SafetyCertificateOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { request, type User } from '../api/client';
+import { request, type Admin } from '../api/client';
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
@@ -11,11 +11,7 @@ export default function Login() {
   const onFinish = async (values: { email: string; password: string }) => {
     setLoading(true);
     try {
-      const d = await request<{ token: string; user: User }>({ url: '/auth/login', method: 'POST', data: values });
-      if (d.user.role !== 'platform_admin') {
-        message.error('该账号不是平台管理员');
-        return;
-      }
+      const d = await request<{ token: string; admin: Admin }>({ url: '/admin/auth/login', method: 'POST', data: values });
       localStorage.setItem('mp_admin_token', d.token);
       message.success('登录成功');
       navigate('/', { replace: true });

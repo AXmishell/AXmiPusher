@@ -51,3 +51,13 @@ func CurrentUser(c *gin.Context) *models.User {
 	}
 	return nil
 }
+
+// CurrentAdmin 从 gin 上下文取当前登录管理员。
+func CurrentAdmin(c *gin.Context) *models.Admin {
+	if v, ok := c.Get(string(middleware.CtxAdmin)); ok {
+		if a, ok := v.(*models.Admin); ok {
+			return a
+		}
+	}
+	return nil
+}

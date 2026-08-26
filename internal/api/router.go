@@ -47,6 +47,7 @@ func NewRouter(a *app.App) *gin.Engine {
 
 	// 业务 API(要求已安装)。
 	getAuth := func() middleware.AuthService { return a.Auth }
+	getAdminAuth := func() middleware.AdminAuthService { return a.Auth }
 	biz := r.Group("/api/v1", middleware.RequireInstalled())
 	{
 		// 认证。
@@ -144,26 +145,44 @@ func NewRouter(a *app.App) *gin.Engine {
 			inbox.PUT("/read-all", handler.MarkAllInboxRead(a))
 		}
 
-		// 管理员后台 API(仅 platform_admin)。
-		admin := biz.Group("/admin", middleware.RequireAuth(getAuth), middleware.RequireRole(models.RolePlatformAdmin))
+		// 管理员后台 API(独立管理员体系, 支持多管理员)。
+		admin := biz.Group("/admin")
 		{
-			admin.GET("/stats", handler.AdminStats(a))
-			admin.GET("/tenants", handler.ListTenants(a))
-			admin.PUT("/tenants/:id/status", handler.SetTenantStatus(a))
-			admin.GET("/users", handler.ListUsers(a))
-			admin.PUT("/users/:id/status", handler.SetUserStatus(a))
-			admin.GET("/templates/reviews", handler.ListReviews(a))
-			admin.POST("/templates/:templateId/versions/:versionId/approve", handler.ApproveReview(a))
-			admin.POST("/templates/:templateId/versions/:versionId/reject", handler.RejectReview(a))
-			admin.GET("/plans", handler.ListPlans(a))
-			admin.POST("/plans", handler.CreatePlan(a))
-			admin.PUT("/plans/:id", handler.UpdatePlan(a))
-			admin.DELETE("/plans/:id", handler.DeletePlan(a))
-			admin.GET("/payment-orders", handler.ListPaymentOrders(a))
-			admin.GET("/audit-logs", handler.ListAuditLogs(a))
-			admin.GET("/settings", handler.GetSettings(a))
-			admin.PUT("/settings", handler.UpdateSettings(a))
-			admin.POST("/settings/rotate-admin-path", handler.RotateAdminPath(a))
+			// 管理员认证(登录公开, 其余需管理员 JWT)。
+			admin.POST("/auth/login", handler.AdminLogin(a))
+			admin.GET("/auth/me", middleware.RequireAdminAuth(getAdminAuth), handler.AdminMe(a))
+			admin.POST("/auth/change-password", middleware.RequireAdminAuth(getAdminAuth), handler.AdminChangePassword(a))
+
+			// 需管理员登录的管理端点。
+			authed := admin.Group("", middleware.RequireAdminAuth(getAdminAuth))
+			{
+				authed.GET("/stats", handler.AdminStats(a))
+				authed.GET("/tenants", handler.ListTenants(a))
+				authed.PUT("/tenants/:id/status", handler.SetTenantStatus(a))
+				authed.GET("/users", handler.ListUsers(a))
+				authed.PUT("/users/:id/status", handler.SetUserStatus(a))
+				authed.GET("/templates/reviews", handler.ListReviews(a))
+				authed.POST("/templates/:templateId/versions/:versionId/approve", handler.ApproveReview(a))
+				authed.POST("/templates/:templateId/versions/:versionId/reject", handler.RejectReview(a))
+				authed.GET("/plans", handler.ListPlans(a))
+				authed.POST("/plans", handler.CreatePlan(a))
+				authed.PUT("/plans/:id", handler.UpdatePlan(a))
+				authed.DELETE("/plans/:id", handler.DeletePlan(a))
+				authed.GET("/payment-orders", handler.ListPaymentOrders(a))
+				authed.GET("/audit-logs", handler.ListAuditLogs(a))
+				authed.GET("/settings", handler.GetSettings(a))
+				authed.PUT("/settings", handler.UpdateSettings(a))
+				authed.POST("/settings/rotate-admin-path", handler.RotateAdminPath(a))
+
+				// 管理员管理(仅超管)。
+				admins := authed.Group("/admins", middleware.RequireAdminRole(models.AdminRoleSuper))
+				{
+					admins.GET("", handler.ListAdmins(a))
+					admins.POST("", handler.CreateAdmin(a))
+					admins.PUT("/:id/status", handler.SetAdminStatus(a))
+					admins.PUT("/:id/password", handler.ResetAdminPassword(a))
+				}
+			}
 		}
 	}
 

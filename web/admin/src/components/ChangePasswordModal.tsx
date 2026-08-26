@@ -15,7 +15,7 @@ export default function ChangePasswordModal({ open, onClose }: Props) {
   const onFinish = async (values: { old: string; new: string }) => {
     setLoading(true);
     try {
-      await request({ url: '/auth/change-password', method: 'POST', data: { old_password: values.old, new_password: values.new } });
+      await request({ url: '/admin/auth/change-password', method: 'POST', data: { old_password: values.old, new_password: values.new } });
       message.success('密码已修改');
       form.resetFields();
       onClose();

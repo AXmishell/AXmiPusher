@@ -31,6 +31,7 @@ type jwtClaims struct {
 	UserID   uint64 `json:"uid"`
 	TenantID uint64 `json:"tid"`
 	Role     string `json:"role"`
+	Kind     string `json:"kind"` // user | admin
 	jwt.RegisteredClaims
 }
 
@@ -144,12 +145,13 @@ func (s *AuthService) ChangePassword(userID uint64, oldPassword, newPassword str
 	return s.db.Model(&user).Update("password_hash", string(hash)).Error
 }
 
-// CreateToken 签发 JWT。
+// CreateToken 签发用户 JWT。
 func (s *AuthService) CreateToken(user *models.User) (string, error) {
 	claims := jwtClaims{
 		UserID:   user.ID,
 		TenantID: user.TenantID,
 		Role:     user.Role,
+		Kind:     "user",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.tokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -160,8 +162,8 @@ func (s *AuthService) CreateToken(user *models.User) (string, error) {
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(s.jwtSecret)
 }
 
-// ParseToken 解析 JWT。
-func (s *AuthService) ParseToken(tokenStr string) (*models.User, error) {
+// parseJWT 解析并校验 JWT 签名, 返回载荷。
+func (s *AuthService) parseJWT(tokenStr string) (*jwtClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, &jwtClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("意外的签名方法: %v", t.Header["alg"])
@@ -175,6 +177,18 @@ func (s *AuthService) ParseToken(tokenStr string) (*models.User, error) {
 	if !ok || !token.Valid {
 		return nil, fmt.Errorf("token 无效")
 	}
+	return claims, nil
+}
+
+// ParseToken 解析用户 JWT。
+func (s *AuthService) ParseToken(tokenStr string) (*models.User, error) {
+	claims, err := s.parseJWT(tokenStr)
+	if err != nil {
+		return nil, err
+	}
+	if claims.Kind != "user" {
+		return nil, fmt.Errorf("凭证类型错误")
+	}
 	var user models.User
 	if err := s.db.First(&user, claims.UserID).Error; err != nil {
 		return nil, err
@@ -183,6 +197,156 @@ func (s *AuthService) ParseToken(tokenStr string) (*models.User, error) {
 		return nil, ErrUserDisabled
 	}
 	return &user, nil
+}
+
+// AdminLogin 管理员登录(查 admins 表)。
+func (s *AuthService) AdminLogin(email, password string) (*models.Admin, error) {
+	var admin models.Admin
+	if err := s.db.Where("email = ?", email).First(&admin).Error; err != nil {
+		return nil, ErrBadCredential
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(password)); err != nil {
+		return nil, ErrBadCredential
+	}
+	if admin.Status != models.StatusActive {
+		return nil, ErrUserDisabled
+	}
+	now := time.Now()
+	s.db.Model(&admin).Update("last_login_at", &now)
+	return &admin, nil
+}
+
+// CreateAdminToken 签发管理员 JWT(kind=admin)。
+func (s *AuthService) CreateAdminToken(admin *models.Admin) (string, error) {
+	claims := jwtClaims{
+		UserID:   admin.ID,
+		TenantID: 0,
+		Role:     admin.Role,
+		Kind:     "admin",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.tokenTTL)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    "messagepusher",
+			Subject:   fmt.Sprintf("%d", admin.ID),
+		},
+	}
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(s.jwtSecret)
+}
+
+// ParseAdminToken 解析管理员 JWT。
+func (s *AuthService) ParseAdminToken(tokenStr string) (*models.Admin, error) {
+	claims, err := s.parseJWT(tokenStr)
+	if err != nil {
+		return nil, err
+	}
+	if claims.Kind != "admin" {
+		return nil, fmt.Errorf("凭证类型错误")
+	}
+	var admin models.Admin
+	if err := s.db.First(&admin, claims.UserID).Error; err != nil {
+		return nil, err
+	}
+	if admin.Status != models.StatusActive {
+		return nil, ErrUserDisabled
+	}
+	return &admin, nil
+}
+
+// AdminChangePassword 修改管理员密码。
+func (s *AuthService) AdminChangePassword(adminID uint64, oldPassword, newPassword string) error {
+	if err := validatePassword(newPassword); err != nil {
+		return err
+	}
+	var admin models.Admin
+	if err := s.db.First(&admin, adminID).Error; err != nil {
+		return err
+	}
+	// 验证旧密码。
+	if err := bcrypt.CompareHashAndPassword([]byte(admin.PasswordHash), []byte(oldPassword)); err != nil {
+		return ErrBadOldPass
+	}
+	// 新旧一致直接成功(幂等)。
+	if oldPassword == newPassword {
+		return nil
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), 10)
+	if err != nil {
+		return err
+	}
+	return s.db.Model(&admin).Update("password_hash", string(hash)).Error
+}
+
+// ListAdmins 管理员列表(超管管理用)。
+func (s *AuthService) ListAdmins() ([]models.Admin, error) {
+	var admins []models.Admin
+	err := s.db.Order("id DESC").Find(&admins).Error
+	return admins, err
+}
+
+// CreateAdmin 创建普通管理员。
+func (s *AuthService) CreateAdmin(email, password, nickname string) (*models.Admin, error) {
+	if err := validatePassword(password); err != nil {
+		return nil, err
+	}
+	var count int64
+	if err := s.db.Model(&models.Admin{}).Where("email = ?", email).Count(&count).Error; err != nil {
+		return nil, err
+	}
+	if count > 0 {
+		return nil, ErrEmailExists
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	if err != nil {
+		return nil, err
+	}
+	admin := models.Admin{
+		Email:        email,
+		PasswordHash: string(hash),
+		Nickname:     nickname,
+		Role:         models.AdminRoleNormal,
+		Status:       models.StatusActive,
+	}
+	if err := s.db.Create(&admin).Error; err != nil {
+		return nil, err
+	}
+	return &admin, nil
+}
+
+// SetAdminStatus 启用/禁用管理员(含自我保护与最后一位保护)。
+func (s *AuthService) SetAdminStatus(operatorID, targetID uint64, status string) error {
+	if targetID == operatorID && status == models.StatusDisabled {
+		return errors.New("不能禁用当前登录的管理员")
+	}
+	var target models.Admin
+	if err := s.db.First(&target, targetID).Error; err != nil {
+		return errors.New("管理员不存在")
+	}
+	if status == models.StatusDisabled {
+		var activeCount int64
+		if err := s.db.Model(&models.Admin{}).Where("status = ?", models.StatusActive).Count(&activeCount).Error; err != nil {
+			return err
+		}
+		if activeCount <= 1 {
+			return errors.New("不能禁用最后一位有效管理员")
+		}
+	}
+	return s.db.Model(&target).Update("status", status).Error
+}
+
+// ResetAdminPassword 重置管理员密码(超管操作, 免旧密码)。
+func (s *AuthService) ResetAdminPassword(id uint64, newPassword string) error {
+	if err := validatePassword(newPassword); err != nil {
+		return err
+	}
+	var admin models.Admin
+	if err := s.db.First(&admin, id).Error; err != nil {
+		return errors.New("管理员不存在")
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), 10)
+	if err != nil {
+		return err
+	}
+	return s.db.Model(&admin).Update("password_hash", string(hash)).Error
 }
 
 // CreateAPIKey 创建 API Key, 返回完整明文 key(仅此一次)。

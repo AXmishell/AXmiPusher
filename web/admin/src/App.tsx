@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Tenants from './pages/Tenants';
 import Users from './pages/Users';
+import Admins from './pages/Admins';
 import Reviews from './pages/Reviews';
 import Plans from './pages/Plans';
 import Payments from './pages/Payments';
@@ -22,6 +23,7 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="tenants" element={<Tenants />} />
           <Route path="users" element={<Users />} />
+          <Route path="admins" element={<Admins />} />
           <Route path="reviews" element={<Reviews />} />
           <Route path="plans" element={<Plans />} />
           <Route path="payments" element={<Payments />} />

@@ -16,6 +16,16 @@ export interface User {
   status: string;
 }
 
+export interface Admin {
+  id: number;
+  email: string;
+  nickname: string;
+  role: string;
+  status: string;
+  last_login_at?: string | null;
+  created_at: string;
+}
+
 export interface TenantRow {
   id: number;
   name: string;

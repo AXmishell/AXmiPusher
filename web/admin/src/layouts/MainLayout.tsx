@@ -15,13 +15,13 @@ import {
 } from '@ant-design/icons';
 import { Dropdown, Space, Avatar } from 'antd';
 import { useEffect, useState } from 'react';
-import { request, type User } from '../api/client';
+import { request, type Admin } from '../api/client';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 
 export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<Admin | null>(null);
   const [pwdOpen, setPwdOpen] = useState(false);
 
   useEffect(() => {
@@ -30,14 +30,9 @@ export default function MainLayout() {
       navigate('/login', { replace: true });
       return;
     }
-    request<{ user: User; is_admin: boolean }>({ url: '/auth/me', method: 'GET' })
+    request<{ admin: Admin }>({ url: '/admin/auth/me', method: 'GET' })
       .then((d) => {
-        if (!d.is_admin) {
-          localStorage.removeItem('mp_admin_token');
-          navigate('/login', { replace: true });
-          return;
-        }
-        setUser(d.user);
+        setUser(d.admin);
       })
       .catch(() => {
         localStorage.removeItem('mp_admin_token');
@@ -50,6 +45,21 @@ export default function MainLayout() {
     navigate('/login', { replace: true });
   };
 
+  // 侧边菜单: 管理员管理仅超管可见。
+  const menuRoutes = [
+    { path: '/', name: '平台概览', icon: <DashboardOutlined /> },
+    { path: '/tenants', name: '租户管理', icon: <TeamOutlined /> },
+    { path: '/users', name: '用户管理', icon: <UserOutlined /> },
+    { path: '/reviews', name: '模板审核', icon: <AuditOutlined /> },
+    { path: '/plans', name: '套餐管理', icon: <GiftOutlined /> },
+    { path: '/payments', name: '支付订单', icon: <PayCircleOutlined /> },
+    { path: '/audit-logs', name: '审计日志', icon: <FileSearchOutlined /> },
+    { path: '/settings', name: '系统设置', icon: <SettingOutlined /> },
+  ];
+  if (user?.role === 'super_admin') {
+    menuRoutes.push({ path: '/admins', name: '管理员管理', icon: <SafetyCertificateOutlined /> });
+  }
+
   return (
     <ProLayout
       title="MessagePusher 管理后台"
@@ -57,16 +67,7 @@ export default function MainLayout() {
       location={{ pathname: location.pathname }}
       route={{
         path: '/',
-        routes: [
-          { path: '/', name: '平台概览', icon: <DashboardOutlined /> },
-          { path: '/tenants', name: '租户管理', icon: <TeamOutlined /> },
-          { path: '/users', name: '用户管理', icon: <UserOutlined /> },
-          { path: '/reviews', name: '模板审核', icon: <AuditOutlined /> },
-          { path: '/plans', name: '套餐管理', icon: <GiftOutlined /> },
-          { path: '/payments', name: '支付订单', icon: <PayCircleOutlined /> },
-          { path: '/audit-logs', name: '审计日志', icon: <FileSearchOutlined /> },
-          { path: '/settings', name: '系统设置', icon: <SettingOutlined /> },
-        ],
+        routes: menuRoutes,
       }}
       menuItemRender={(item, dom) => <a onClick={() => navigate(item.path!)}>{dom}</a>}
       avatarProps={{

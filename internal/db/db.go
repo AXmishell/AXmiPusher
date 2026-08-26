@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"messagepusher/internal/config"
 	"messagepusher/internal/models"
@@ -63,6 +64,7 @@ func migrate(gdb *gorm.DB) error {
 	if err := gdb.AutoMigrate(
 		&models.Tenant{},
 		&models.User{},
+		&models.Admin{},
 		&models.APIKey{},
 		&models.CompatKey{},
 		&models.Template{},
@@ -80,6 +82,74 @@ func migrate(gdb *gorm.DB) error {
 		&models.InappMessage{},
 	); err != nil {
 		return fmt.Errorf("自动迁移失败: %w", err)
+	}
+	// 旧版平台管理员(users.role=platform_admin)迁移到独立 admins 表。
+	if err := migrateLegacyAdmins(gdb); err != nil {
+		return err
+	}
+	return nil
+}
+
+// migrateLegacyAdmins 将旧版 users 表中的平台管理员迁移到 admins 表。
+// 规则: users 表 role='platform_admin' 的行 → admins 表 role=super_admin, 迁移后从 users 删除。
+// 若 admins 表已有数据(新版本已创建管理员), 只清理 users 中的残留行, 不覆盖新数据。
+func migrateLegacyAdmins(gdb *gorm.DB) error {
+	type legacyAdmin struct {
+		Email        string
+		PasswordHash string
+		Nickname     string
+		Status       string
+		LastLoginAt  *time.Time
+		CreatedAt    time.Time
+		UpdatedAt    time.Time
+	}
+	var legacy []legacyAdmin
+	if err := gdb.Model(&models.User{}).
+		Where("role = ?", models.RolePlatformAdmin).
+		Find(&legacy).Error; err != nil {
+		return fmt.Errorf("迁移旧版平台管理员失败: %w", err)
+	}
+	if len(legacy) == 0 {
+		return nil
+	}
+
+	// admins 表已有任何数据 → 只清理 users 残留, 避免覆盖新数据。
+	var adminCount int64
+	if err := gdb.Model(&models.Admin{}).Count(&adminCount).Error; err != nil {
+		return fmt.Errorf("迁移旧版平台管理员失败: %w", err)
+	}
+	if adminCount > 0 {
+		if err := gdb.Where("role = ?", models.RolePlatformAdmin).Delete(&models.User{}).Error; err != nil {
+			return fmt.Errorf("迁移旧版平台管理员失败: %w", err)
+		}
+		return nil
+	}
+
+	// 事务内逐行复制(保留原时间戳), 然后删除 users 中的旧管理员。
+	err := gdb.Transaction(func(tx *gorm.DB) error {
+		for _, u := range legacy {
+			nickname := u.Nickname
+			if nickname == "" {
+				nickname = "Administrator"
+			}
+			admin := models.Admin{
+				Email:        u.Email,
+				PasswordHash: u.PasswordHash,
+				Nickname:     nickname,
+				Role:         models.AdminRoleSuper,
+				Status:       u.Status,
+				LastLoginAt:  u.LastLoginAt,
+				CreatedAt:    u.CreatedAt,
+				UpdatedAt:    u.UpdatedAt,
+			}
+			if err := tx.Create(&admin).Error; err != nil {
+				return err
+			}
+		}
+		return tx.Where("role = ?", models.RolePlatformAdmin).Delete(&models.User{}).Error
+	})
+	if err != nil {
+		return fmt.Errorf("迁移旧版平台管理员失败: %w", err)
 	}
 	return nil
 }

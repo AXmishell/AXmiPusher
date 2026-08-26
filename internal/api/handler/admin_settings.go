@@ -56,31 +56,31 @@ func UpdateSettings(a *app.App) gin.HandlerFunc {
 			return
 		}
 		if req.SMTP != nil {
-			if err := a.Settings.Set("smtp", string(*req.SMTP), currentUserID(c)); err != nil {
+			if err := a.Settings.Set("smtp", string(*req.SMTP), currentAdminID(c)); err != nil {
 				response.ServerError(c, "保存 SMTP 配置失败")
 				return
 			}
 		}
 		if req.Epay != nil {
-			if err := a.Settings.Set("epay", string(*req.Epay), currentUserID(c)); err != nil {
+			if err := a.Settings.Set("epay", string(*req.Epay), currentAdminID(c)); err != nil {
 				response.ServerError(c, "保存易支付配置失败")
 				return
 			}
 		}
 		if req.RetentionDays != nil {
-			if err := a.Settings.Set("retention_days", strconv.Itoa(*req.RetentionDays), currentUserID(c)); err != nil {
+			if err := a.Settings.Set("retention_days", strconv.Itoa(*req.RetentionDays), currentAdminID(c)); err != nil {
 				response.ServerError(c, "保存失败")
 				return
 			}
 			a.Cfg.Retention.MessageDays = *req.RetentionDays
 		}
 		if req.RateLimitPerMinute != nil {
-			a.Settings.Set("rate_limit_per_minute", strconv.Itoa(*req.RateLimitPerMinute), currentUserID(c))
+			a.Settings.Set("rate_limit_per_minute", strconv.Itoa(*req.RateLimitPerMinute), currentAdminID(c))
 			// 立即生效(限流器支持动态调整额度)。
 			a.Cfg.RateLimit.PerMinute = *req.RateLimitPerMinute
 			a.Limiter.SetPerMinute(*req.RateLimitPerMinute)
 		}
-		Audit(a.DB, c, currentUserID(c), currentUserEmail(c), "settings.update", gin.H{})
+		Audit(a.DB, c, currentAdminID(c), currentAdminEmail(c), "settings.update", gin.H{})
 		response.OK(c, gin.H{"ok": true})
 	}
 }
@@ -109,7 +109,7 @@ func RotateAdminPath(a *app.App) gin.HandlerFunc {
 			response.ServerError(c, "保存配置失败")
 			return
 		}
-		Audit(a.DB, c, currentUserID(c), currentUserEmail(c), "settings.rotate_admin_path",
+		Audit(a.DB, c, currentAdminID(c), currentAdminEmail(c), "settings.rotate_admin_path",
 			gin.H{"new_path": newPath})
 		response.OK(c, gin.H{"admin_path": newPath})
 	}

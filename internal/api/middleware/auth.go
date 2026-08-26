@@ -19,6 +19,7 @@ const (
 	CtxUser   ContextKey = "user"
 	CtxTenant ContextKey = "tenant"
 	CtxAPIKey ContextKey = "api_key"
+	CtxAdmin  ContextKey = "admin"
 )
 
 // AuthService 认证服务接口(由 service 层实现)。
@@ -27,6 +28,12 @@ type AuthService interface {
 	ParseToken(token string) (*models.User, error)
 	// ResolveAPIKey 解析 API Key 返回租户。
 	ResolveAPIKey(key string) (*models.APIKey, *models.Tenant, error)
+}
+
+// AdminAuthService 管理员认证服务接口(由 service 层实现)。
+type AdminAuthService interface {
+	// ParseAdminToken 解析管理员 JWT 返回管理员。
+	ParseAdminToken(token string) (*models.Admin, error)
 }
 
 // RequireAuth 要求 JWT 登录态。
@@ -121,6 +128,48 @@ func RequireRole(roles ...string) gin.HandlerFunc {
 	}
 }
 
+// RequireAdminAuth 要求管理员 JWT 登录态。
+// getAuth 为惰性取值函数(应用容器重建后返回最新 AuthService)。
+func RequireAdminAuth(getAuth func() AdminAuthService) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := extractBearer(c)
+		if token == "" {
+			response.Unauthorized(c, "缺少认证凭证")
+			c.Abort()
+			return
+		}
+		admin, err := getAuth().ParseAdminToken(token)
+		if err != nil {
+			response.Unauthorized(c, "凭证无效或已过期")
+			c.Abort()
+			return
+		}
+		c.Set(string(CtxAdmin), admin)
+		c.Next()
+	}
+}
+
+// RequireAdminRole 要求指定管理员角色(仅用于管理员 JWT 登录态)。
+func RequireAdminRole(roles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		a, ok := c.Get(string(CtxAdmin))
+		if !ok {
+			response.Unauthorized(c, "未登录")
+			c.Abort()
+			return
+		}
+		admin := a.(*models.Admin)
+		for _, r := range roles {
+			if admin.Role == r {
+				c.Next()
+				return
+			}
+		}
+		response.Forbidden(c, "无权限执行此操作")
+		c.Abort()
+	}
+}
+
 // RequireInstalled 未安装时拒绝业务 API。
 func RequireInstalled() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -168,6 +217,16 @@ func CurrentUser(c *gin.Context) *models.User {
 	if v, ok := c.Get(string(CtxUser)); ok {
 		if u, ok := v.(*models.User); ok {
 			return u
+		}
+	}
+	return nil
+}
+
+// CurrentAdmin 从上下文取当前管理员。
+func CurrentAdmin(c *gin.Context) *models.Admin {
+	if v, ok := c.Get(string(CtxAdmin)); ok {
+		if a, ok := v.(*models.Admin); ok {
+			return a
 		}
 	}
 	return nil

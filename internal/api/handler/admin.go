@@ -88,7 +88,7 @@ func SetTenantStatus(a *app.App) gin.HandlerFunc {
 			response.NotFound(c, "租户不存在")
 			return
 		}
-		Audit(a.DB, c, currentUserID(c), currentUserEmail(c), "tenant.set_status",
+		Audit(a.DB, c, currentAdminID(c), currentAdminEmail(c), "tenant.set_status",
 			gin.H{"tenant_id": id, "status": req.Status})
 		response.OK(c, gin.H{"ok": true})
 	}
@@ -149,7 +149,7 @@ func SetUserStatus(a *app.App) gin.HandlerFunc {
 			response.ServerError(c, "操作失败")
 			return
 		}
-		Audit(a.DB, c, currentUserID(c), currentUserEmail(c), "user.set_status",
+		Audit(a.DB, c, currentAdminID(c), currentAdminEmail(c), "user.set_status",
 			gin.H{"user_id": id, "status": req.Status})
 		response.OK(c, gin.H{"ok": true})
 	}
