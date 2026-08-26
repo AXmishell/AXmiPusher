@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/hex"
 	"fmt"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"axmipusher/internal/models"
 	"axmipusher/internal/pkg/response"
 
+	_ "github.com/go-sql-driver/mysql" // MySQL 驱动注册(env-check 连通性探测)
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -41,9 +43,10 @@ func (a *App) InstallRoutes(r *gin.Engine) {
 // --- 请求/响应 DTO ---
 
 type envCheckRequest struct {
-	DBType     string `json:"db_type"`     // sqlite | postgres
+	DBType     string `json:"db_type"`     // sqlite | postgres | mysql
 	SQLitePath string `json:"sqlite_path"` //
 	PG         pgInfo `json:"pg"`
+	MySQL      pgInfo `json:"mysql"` // 复用同形结构(ssl_mode 对 mysql 忽略)
 }
 
 type pgInfo struct {
@@ -67,6 +70,8 @@ type installInitRequest struct {
 	DBType        string `json:"db_type"`
 	SQLitePath    string `json:"sqlite_path"`
 	PG            pgInfo `json:"pg"`
+	MySQL         pgInfo `json:"mysql"`
+	AdminPath     string `json:"admin_path"` // 管理后台自定义路径, 留空自动生成
 	RetentionDays int    `json:"retention_days"`
 	RedisAddr     string `json:"redis_addr"`     // 可选
 	RedisPassword string `json:"redis_password"` // 可选
@@ -109,6 +114,9 @@ func (a *App) handleEnvCheck(c *gin.Context) {
 	case "postgres":
 		ok, msg := checkPostgres(req.PG)
 		checks = append(checks, checkItem{Name: "PostgreSQL 连接", OK: ok, Msg: msg})
+	case "mysql":
+		ok, msg := checkMySQL(req.MySQL)
+		checks = append(checks, checkItem{Name: "MySQL 连接", OK: ok, Msg: msg})
 	case "":
 		checks = append(checks, checkItem{Name: "数据库类型", OK: false, Msg: "未选择"})
 	default:
@@ -128,8 +136,8 @@ func (a *App) handleInstallInit(c *gin.Context) {
 		response.Forbidden(c, "平台已安装, 无法重复初始化")
 		return
 	}
-	if req.DBType != "sqlite" && req.DBType != "postgres" {
-		response.BadRequest(c, "数据库类型必须是 sqlite 或 postgres")
+	if req.DBType != "sqlite" && req.DBType != "postgres" && req.DBType != "mysql" {
+		response.BadRequest(c, "数据库类型必须是 sqlite、postgres 或 mysql")
 		return
 	}
 
@@ -159,6 +167,12 @@ func (a *App) handleInstallInit(c *gin.Context) {
 		cfg.Database.Password = req.PG.Password
 		cfg.Database.Name = req.PG.Name
 		cfg.Database.SSLMode = defaultIfEmpty(req.PG.SSLMode, "disable")
+	case "mysql":
+		cfg.Database.Host = req.MySQL.Host
+		cfg.Database.Port = req.MySQL.Port
+		cfg.Database.User = req.MySQL.User
+		cfg.Database.Password = req.MySQL.Password
+		cfg.Database.Name = req.MySQL.Name
 	}
 	if req.RetentionDays > 0 {
 		cfg.Retention.MessageDays = req.RetentionDays
@@ -184,16 +198,30 @@ func (a *App) handleInstallInit(c *gin.Context) {
 		cfg.Web.AdminDist = "web/admin/dist"
 	}
 
-	// admin 随机路径取自前端构建产物(否则 base 不一致导致管理后台资源 404)。
-	adminPath := DetectAdminBase(cfg.Web.AdminDist)
-	if adminPath == "" {
-		adminPath = "b322aa9602150d0c" // 与构建脚本默认一致
+	// 管理后台路径: 用户可自定义(8-32 位大小写字母/数字), 留空自动生成 16 位随机路径。
+	// 旧实现固定回退 "b322aa9602150d0c" 导致每次安装路径相同(安全风险), 现改为每次随机。
+	adminPath := ""
+	if strings.TrimSpace(req.AdminPath) != "" {
+		adminPath, err = config.ValidateAdminPath(req.AdminPath)
+		if err != nil {
+			response.BadRequest(c, "后台路径不合法: "+err.Error())
+			return
+		}
+	} else {
+		adminPath = DetectAdminBase(cfg.Web.AdminDist)
+		if adminPath == "" {
+			adminPath, err = config.GenerateRandomAdminPath() // 16 位大小写字母数字
+			if err != nil {
+				response.ServerError(c, "生成后台路径失败")
+				return
+			}
+		}
 	}
 	cfg.Admin.RandomPath = adminPath
 
-	// 校验 PG 配置正确性(只做格式校验)。
-	if cfg.Database.Type == "postgres" && (cfg.Database.Host == "" || cfg.Database.Name == "") {
-		response.BadRequest(c, "PostgreSQL 连接信息不完整")
+	// 校验数据库连接信息正确性(只做格式校验)。
+	if (cfg.Database.Type == "postgres" || cfg.Database.Type == "mysql") && (cfg.Database.Host == "" || cfg.Database.Name == "") {
+		response.BadRequest(c, "数据库连接信息不完整")
 		return
 	}
 
@@ -213,6 +241,9 @@ func (a *App) handleInstallInit(c *gin.Context) {
 		response.ServerError(c, "初始化套餐失败: "+err.Error())
 		return
 	}
+
+	// 动态注册 admin 前缀路由: 安装完成即可访问新后台路径, 无需重启(重启前的兼容修复)。
+	a.RegisterAdminSPA(cfg.Admin.RandomPath, cfg.Web.AdminDist)
 
 	response.OK(c, installInitResponse{AdminPath: adminPath, DBType: cfg.Database.Type})
 }
@@ -297,6 +328,27 @@ func checkPostgres(p pgInfo) (bool, string) {
 	return true, "连接成功"
 }
 
+// checkMySQL 检查 MySQL 连通性(go-sql-driver 原生连接, 支持 MySQL 5.7)。
+func checkMySQL(p pgInfo) (bool, string) {
+	port := p.Port
+	if port <= 0 {
+		port = 3306
+	}
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8mb4&timeout=3s",
+		p.User, p.Password, p.Host, port, p.Name)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return false, "连接失败: " + err.Error()
+	}
+	defer db.Close()
+	if err := db.PingContext(ctx); err != nil {
+		return false, "连接失败: " + err.Error()
+	}
+	return true, "连接成功"
+}
+
 // DetectAdminBase 从 admin 前端构建产物的 index.html 解析实际 base 路径。
 // 构建脚本将 base 写死为 /{随机串}/, 若运行时生成不同路径会导致管理后台资源 404。
 func DetectAdminBase(distDir string) string {
@@ -317,23 +369,14 @@ func DetectAdminBase(distDir string) string {
 }
 
 // RegisterAdminSPA 动态注册 admin 前缀下的 SPA 静态托管(轮换路径后调用)。
-// 命中文件返回文件, 否则回退 index.html。
+// 内部用 AdminSPAHandler: 请求前缀与当前配置路径一致才提供内容, 旧前缀自动 302 到新路径,
+// 因此轮换后旧路径立即失效, 无需也无法注销旧路由(Gin 无路由注销 API)。
 func (a *App) RegisterAdminSPA(prefix, distDir string) {
 	if a.Router == nil || prefix == "" || distDir == "" {
 		return
 	}
 	routePath := "/" + strings.Trim(prefix, "/") + "/*filepath"
-	a.Router.GET(routePath, func(c *gin.Context) {
-		p := c.Param("filepath")
-		if p == "" || p == "/" {
-			p = "/"
-		}
-		full := filepath.Join(distDir, filepath.Clean(strings.TrimPrefix(p, "/")))
-		if info, err := os.Stat(full); err != nil || info.IsDir() {
-			full = filepath.Join(distDir, "index.html")
-		}
-		c.File(full)
-	})
+	a.Router.GET(routePath, AdminSPAHandler(a, distDir))
 }
 
 // seedPlans 写入默认套餐。

@@ -2,7 +2,6 @@ package handler
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -16,15 +15,6 @@ import (
 // randRead 用密码学安全随机源填充 buf。
 func randRead(buf []byte) {
 	rand.Read(buf)
-}
-
-// randomHex 生成 n 字节的十六进制随机串。
-func randomHex(n int) (string, error) {
-	buf := make([]byte, n)
-	if _, err := rand.Read(buf); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(buf), nil
 }
 
 // rewriteAdminBase 改写 admin dist index.html 中的 base 路径为 newPath。

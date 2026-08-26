@@ -16,10 +16,12 @@ export default function Settings() {
   const [smtpForm] = Form.useForm();
   const [epayForm] = Form.useForm();
   const [sysForm] = Form.useForm();
+  const [pathInput, setPathInput] = useState('');
 
   useEffect(() => {
     request<SettingsData>({ url: '/admin/settings', method: 'GET' }).then((d) => {
       setData(d);
+      setPathInput(d.admin_path || '');
       smtpForm.setFieldsValue(d.smtp);
       epayForm.setFieldsValue(d.epay);
       sysForm.setFieldsValue({
@@ -50,8 +52,21 @@ export default function Settings() {
 
   const rotatePath = async () => {
     const d = await request<{ admin_path: string }>({ url: '/admin/settings/rotate-admin-path', method: 'POST', data: {} });
-    message.success(`已轮换, 新路径: /${d.admin_path}/`, 8);
-    setData({ ...data!, admin_path: d.admin_path });
+    message.success(`已轮换, 正在跳转到新路径 /${d.admin_path}/ ...`, 2);
+    // 立即重定向到新后台地址(旧路径已由后端直接废除, 404 不再提供内容)。
+    window.location.href = `/${d.admin_path}/`;
+  };
+
+  const applyPath = async () => {
+    const custom = pathInput.trim();
+    if (!custom) {
+      message.warning('请输入自定义路径, 或使用随机轮换');
+      return;
+    }
+    const d = await request<{ admin_path: string }>({ url: '/admin/settings/rotate-admin-path', method: 'POST', data: { admin_path: custom } });
+    message.success(`已应用, 正在跳转到新路径 /${d.admin_path}/ ...`, 2);
+    // 旧路径立即废除, 跳转到新后台地址。
+    window.location.href = `/${d.admin_path}/`;
   };
 
   return (
@@ -114,17 +129,28 @@ export default function Settings() {
         </Form>
         <Divider />
         <Typography.Text strong>
-          <SafetyCertificateOutlined /> 管理员后台路径（随机隐藏路由）
+          <SafetyCertificateOutlined /> 管理员后台路径（随机隐藏路由，全局唯一）
         </Typography.Text>
-        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <code style={{ background: '#f1f5f9', padding: '6px 12px', borderRadius: 6, fontSize: 14 }}>
             {location.origin}/{data?.admin_path || '-'}/
           </code>
-          <Popconfirm title="轮换后旧路径立即失效，且需重新部署前端 base，确定？" onConfirm={rotatePath}>
-            <Button danger>轮换随机路径</Button>
+          <Input
+            value={pathInput}
+            onChange={(e) => setPathInput(e.target.value)}
+            style={{ width: 200 }}
+            placeholder="自定义路径(8-32位字母数字)"
+            maxLength={32}
+            allowClear
+          />
+          <Popconfirm title="应用后旧路径立即废除(404)且不可再访问，确定？" onConfirm={applyPath}>
+            <Button type="primary">应用自定义路径</Button>
+          </Popconfirm>
+          <Popconfirm title="轮换后旧路径立即废除并生成随机新路径，确定？" onConfirm={rotatePath}>
+            <Button danger>随机轮换</Button>
           </Popconfirm>
         </div>
-        <Alert style={{ marginTop: 12 }} type="info" showIcon message="路径混淆仅作为安全纵深，真正的防护是平台管理员 JWT + 角色校验。" />
+        <Alert style={{ marginTop: 12 }} type="info" showIcon message="路径混淆仅作为安全纵深，真正的防护是平台管理员 JWT + 角色校验。更换路径后旧路径立即失效(404)，后台路径保持唯一。" />
       </Card>
     </div>
   );

@@ -115,6 +115,7 @@
         <select id="dbType" onchange="onDbTypeChange()">
           <option value="sqlite">SQLite</option>
           <option value="postgres">PostgreSQL</option>
+          <option value="mysql">MySQL 5.7+</option>
         </select>
       </div>
       <div class="field hidden" id="sqliteField">
@@ -131,6 +132,22 @@
           <div class="field"><label>用户</label><input id="pgUser" value="postgres"></div>
           <div class="field"><label>密码</label><input id="pgPassword" type="password"></div>
         </div>
+      </div>
+      <div class="hidden" id="mysqlFields">
+        <div class="row">
+          <div class="field"><label>主机</label><input id="mysqlHost" value="127.0.0.1"></div>
+          <div class="field"><label>端口</label><input id="mysqlPort" value="3306" type="number"></div>
+        </div>
+        <div class="field"><label>数据库名</label><input id="mysqlName" placeholder="axmipusher"></div>
+        <div class="row">
+          <div class="field"><label>用户</label><input id="mysqlUser" value="root"></div>
+          <div class="field"><label>密码</label><input id="mysqlPassword" type="password"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>管理后台路径（可选，留空自动生成随机路径）</label>
+        <input id="adminPath" placeholder="仅限 8-32 位大小写字母或数字" maxlength="32" pattern="[A-Za-z0-9]{8,32}">
+        <div class="tip">自定义路径需 8-32 位大小写字母/数字；留空则每次安装自动生成 16 位随机路径，更安全</div>
       </div>
       <div class="row">
         <div class="field"><label>消息保留天数</label><input id="retentionDays" value="90" type="number"></div>
@@ -200,6 +217,7 @@ function onDbTypeChange() {
   state.dbType = document.getElementById('dbType').value;
   document.getElementById('sqliteField').classList.toggle('hidden', state.dbType !== 'sqlite');
   document.getElementById('pgFields').classList.toggle('hidden', state.dbType !== 'postgres');
+  document.getElementById('mysqlFields').classList.toggle('hidden', state.dbType !== 'mysql');
 }
 function onRedisChange() {
   document.getElementById('redisFields').classList.toggle('hidden', !document.getElementById('redisAddr').value.trim());
@@ -227,7 +245,8 @@ async function runEnvCheck() {
     const req = {
       db_type: state.dbType,
       sqlite_path: document.getElementById('sqlitePath').value,
-      pg: pgInfo()
+      pg: pgInfo(),
+      mysql: mysqlInfo()
     };
     const data = await api('/api/install/env-check', req);
     box.innerHTML = '';
@@ -258,6 +277,16 @@ function pgInfo() {
   };
 }
 
+function mysqlInfo() {
+  return {
+    host: document.getElementById('mysqlHost').value,
+    port: parseInt(document.getElementById('mysqlPort').value) || 3306,
+    user: document.getElementById('mysqlUser').value,
+    password: document.getElementById('mysqlPassword').value,
+    name: document.getElementById('mysqlName').value
+  };
+}
+
 async function doInit() {
   const btn = document.getElementById('btnInit');
   btn.disabled = true;
@@ -269,6 +298,8 @@ async function doInit() {
       db_type: state.dbType,
       sqlite_path: document.getElementById('sqlitePath').value,
       pg: pgInfo(),
+      mysql: mysqlInfo(),
+      admin_path: document.getElementById('adminPath').value.trim(),
       retention_days: parseInt(document.getElementById('retentionDays').value) || 90,
       redis_addr: document.getElementById('redisAddr').value.trim(),
       redis_password: document.getElementById('redisPassword').value,

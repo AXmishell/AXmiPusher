@@ -169,7 +169,9 @@ func NewRouter(a *app.App) *gin.Engine {
 			{
 				authed.GET("/stats", handler.AdminStats(a))
 				authed.GET("/users", handler.ListUsers(a))
+				authed.POST("/users", handler.CreateUser(a))
 				authed.PUT("/users/:id/status", handler.SetUserStatus(a))
+				authed.PUT("/users/:id", handler.UpdateUser(a))
 				authed.GET("/templates/reviews", handler.ListReviews(a))
 				authed.POST("/templates/:templateId/versions/:versionId/approve", handler.ApproveReview(a))
 				authed.POST("/templates/:templateId/versions/:versionId/reject", handler.RejectReview(a))
@@ -203,7 +205,7 @@ func NewRouter(a *app.App) *gin.Engine {
 	r.GET("/api/v1/pay/return", handler.PayReturn(a))
 
 	// 生产环境前端静态托管(根 → 用户中心, /{admin_path}/ → 管理后台)。
-	registerWebRoutes(r, a.Cfg.Web.UserDist, a.Cfg.Web.AdminDist, a.Cfg.Admin.RandomPath)
+	registerWebRoutes(r, a)
 
 	// 调试路由(模拟支付等): 仅 debug 构建注册, 默认构建为空桩。
 	registerDebugRoutes(r, a)
