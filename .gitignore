@@ -2,6 +2,7 @@
 bin/
 *.exe
 *.log
+*.tar.gz
 
 # è¿è¡Œæ•°æ®(æœ¬åœ°æ¨¡å¼)
 data/
@@ -35,10 +36,10 @@ Thumbs.db
 # Playwright æˆªå›¾
 .playwright-mcp/
 
-# »á»°/¹¤¾ßºÛ¼£
+# ä¼šè¯/å·¥ä½œç—•è¿¹
 .omo/
 
-# ´ò°ü²úÎï
+# å®‰è£…åŒ…
 dist-install/
 
 tsconfig.tsbuildinfo
