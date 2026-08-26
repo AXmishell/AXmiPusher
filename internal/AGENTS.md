@@ -31,7 +31,7 @@
 | compat | 兼容层: Server酱 v1/v2 接口 | 公开路由, 走兼容 key 鉴权 |
 | config | 配置加载与持久化 | MP_* 环境变量 > config.yaml > 默认值; Save 由安装程序调用 |
 | db | GORM 初始化 + AutoMigrate | 生产 PG / 本地 SQLite; SQLite 单写连接; migrations/ 为空 |
-| models | 全部业务数据模型 | GORM 标签; 消息状态机见 store.Message |
+| models | 全部业务数据模型 | GORM 标签; 消息状态机见 store.Message; **无 Tenant 模型**(2026-08 已折叠入 User) |
 | pkg | 通用小工具 | 仅 pkg/response: 统一 API 响应格式 |
 | queue | 队列抽象 + 双实现 | inprocess/Kafka; Subscribe 阻塞; 消费逻辑在 worker |
 | service | 业务逻辑层 | 后台任务必须用独立 ctx; 模板有待审核版本禁止修改 |
@@ -49,3 +49,4 @@
 - 后台任务必须用独立 ctx(如 context.Background)。请求 ctx 在 HTTP 结束即取消。
 - 不要重建同类型队列实例。消费者订阅旧实例后, 重建会导致消息无人消费。
 - 模板存在待审核版本时禁止修改(service/template.go 会拒绝)。
+- **租户已折叠入用户**(2026-08): 全部业务表 `tenant_id` 列名/参数名保留, 值 = 归属用户 ID; 限流/幂等/消息统计等按 tenantID 参数处一律传 user.ID。

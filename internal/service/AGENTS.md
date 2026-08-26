@@ -7,7 +7,7 @@
 ## 服务总览
 | 服务 | 职责 | 依赖 |
 |---|---|---|
-| AuthService | 注册/登录/JWT/API Key/改密 | db, config |
+| AuthService | 用户注册/登录/JWT/改密 + 管理员(登录/JWT/改密/增删改查) + API Key | db, config |
 | MessageService | 发送受理链路(幂等→限流→渲染→入队) | db, store.MessageStore, queue.Queue, RateLimiter |
 | BatchService | 批量任务后台 runner | db, MessageService |
 | PaymentService | 易支付下单/验签/回调/订阅生效 | db, SettingsService |
@@ -17,15 +17,22 @@
 
 ## 关键逻辑
 
+### 注册与管理员(AuthService)
+- `Register(email, password, name, nickname)`: **不建租户**(2026-08 折叠), 直接建 User{Name: 空则 email, Role: tenant_admin}; 邮箱查重 ErrEmailExists。
+- 管理员方法: `AdminLogin/CreateAdminToken/ParseAdminToken`(JWT kind=admin, 查 admins 表); `AdminChangePassword`; `ListAdmins/CreateAdmin/SetAdminStatus/ResetAdminPassword`(后两者仅超管路由调用)。
+- `SetAdminStatus` 保护: 不能禁用自己、不能禁用最后一位有效管理员。
+- 用户/管理员 JWT 双向隔离: `ParseToken` 只认 kind=user, `ParseAdminToken` 只认 kind=admin。
+- 业务表 `tenant_id` 值 = 归属用户 ID(租户折叠后语义, 参数名保留)。
+
 ### 幂等(MessageService.Send)
-- 同租户 + 同 request_id 只受理一次: DB 唯一索引兜底 + Redis 缓存加速(快路径命中直接返回原 message_id, TTL 86400)。
+- 同用户 + 同 request_id 只受理一次: DB 唯一索引兜底 + Redis 缓存加速(快路径命中直接返回原 message_id, TTL 86400)。
 - Redis 异常自动降级走 DB, 不阻断发送。
 - 只有成功入队 ≥1 条才写幂等记录; 入队失败不写, 允许重试。
 
 ### 限流(RateLimiter 接口)
-- 接口: `Allow(tenantID) / Type() / SetPerMinute(n)`。
+- 接口: `Allow(tenantID) / Type() / SetPerMinute(n)`(tenantID 值 = 用户 ID)。
 - MemoryRateLimiter: 令牌桶, 单实例/降级用。
-- RedisRateLimiter: 固定窗口, Lua `INCR+PEXPIRE` 原子计数, key `ratelimit:{tenant}`, 窗口 60s。
+- RedisRateLimiter: 固定窗口, Lua `INCR+PEXPIRE` 原子计数, key `ratelimit:{用户ID}`, 窗口 60s。
 - Redis 异常放行(容错优先, 由审计兜底)。
 
 ### 批量任务(BatchService)

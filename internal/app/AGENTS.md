@@ -31,8 +31,9 @@
 - 路由: `POST /api/install/{status, env-check, init, admin, complete}` + `GET /install`(HTML)
 - 状态机: `config.IsInstalled()`(install.lock 存在)门控; 未安装时业务 API 503
 - `init` 流程: 生成 JWT 密钥 → **admin path 从 admin dist index.html 解析**(DetectAdminBase, 与构建 base 一致, 否则管理后台 404)→ 写 config.yaml → `Reinit` → seedPlans(默认 3 套餐)
-- `admin`: 创建平台管理员(邮箱/昵称/密码≥8, bcrypt); 已存在则 Conflict
+- `admin`: 创建 admins 表首条超管(super_admin, 邮箱/昵称/密码≥8, bcrypt); admins 表已有数据则 Conflict
 - `complete`: `config.MarkInstalled()` 写 install.lock
+- 老数据迁移: db 包 `migrateLegacyAdmins` 启动时把 users.role=platform_admin 迁入 admins(超管)后从 users 删除(仅旧版升级)
 - 端口固化: server.port=8080 / web.user_port=19876 / web.admin_port=19877 / api_target 写死
 
 ## 关键函数

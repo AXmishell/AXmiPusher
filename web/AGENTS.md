@@ -21,7 +21,8 @@
 ## 页面清单
 
 - user 12 页: Dashboard / SendMessage / Messages / ApiKeys / CompatKeys / Callbacks / Plans / Channels / Inbox / BatchTasks / Login / Register
-- admin 9 页: Tenants / Users / Reviews / Plans / Payments / AuditLogs / Settings / Dashboard / Login
+- admin 9 页: Users / Admins(管理员管理, 仅超管可见) / Reviews / Plans / Payments / AuditLogs / Settings / Dashboard / Login
+- 2026-08 租户概念已移除: 无"租户管理"页; 用户中心注册的 `tenant_name` 字段保留(语义=名称, 可选, 默认邮箱), 展示处读 `user.name`
 
 ## 关键差异(admin vs user)
 
@@ -52,7 +53,7 @@
 - tsconfig strict, 但 `noUnusedLocals/Parameters` 关闭(容忍死代码)
 - `.npmrc` 固定 registry=npmmirror(国内网络); 无 lockfile 提交
 - `allowScripts.esbuild` 白名单(pnpm-10 风格, 放行 esbuild postinstall)
-- 产物由 deploy/build-artifacts.ps1 本地构建后提交到 deploy/context/(勿在服务器/容器内构建)
+- **构建在云端完成**(2026-08 起): 本地不跑 build, 由 deploy/cloud-build-deploy.sh 在云端 npm install + build 后部署; 云端需 4G swap + `NODE_OPTIONS=--max-old-space-size=2048`(否则 node/tsc OOM Abort — 已踩坑)
 
 ## 维护注意
 
