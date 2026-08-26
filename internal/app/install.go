@@ -216,7 +216,7 @@ func (a *App) handleInstallInit(c *gin.Context) {
 	}
 
 	// admin 随机路径取自前端构建产物(否则 base 不一致导致管理后台资源 404)。
-	adminPath := detectAdminBase(cfg.Web.AdminDist)
+	adminPath := DetectAdminBase(cfg.Web.AdminDist)
 	if adminPath == "" {
 		adminPath = "b322aa9602150d0c" // 与构建脚本默认一致
 	}
@@ -329,9 +329,9 @@ func checkPostgres(p pgInfo) (bool, string) {
 	return true, "连接成功"
 }
 
-// detectAdminBase 从 admin 前端构建产物的 index.html 解析实际 base 路径。
-// 构建脚本将 base 写死为 /{随机串}/, 若运行时随机生成不同路径会导致管理后台资源 404。
-func detectAdminBase(distDir string) string {
+// DetectAdminBase 从 admin 前端构建产物的 index.html 解析实际 base 路径。
+// 构建脚本将 base 写死为 /{随机串}/, 若运行时生成不同路径会导致管理后台资源 404。
+func DetectAdminBase(distDir string) string {
 	if distDir == "" {
 		return ""
 	}

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"messagepusher/internal/app"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,6 +18,11 @@ func registerWebRoutes(r *gin.Engine, userDist, adminDist, adminPath string) {
 	adminPrefix := ""
 	if adminPath != "" {
 		adminPrefix = "/" + strings.Trim(adminPath, "/")
+	} else if adminDist != "" {
+		// 未安装(无 config.yaml)时从构建产物解析 base, 保证安装前管理后台路由已注册。
+		if p := app.DetectAdminBase(adminDist); p != "" {
+			adminPrefix = "/" + p
+		}
 	}
 
 	// 管理员后台: 显式前缀路由(唯一前缀, 无路由树冲突)。
