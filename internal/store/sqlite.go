@@ -182,8 +182,13 @@ func claimQuery(db *gorm.DB, limit int) *gorm.DB {
 		Where("status = 'PENDING'").
 		Order("message_id ASC").
 		Limit(limit)
-	if db.Dialector.Name() == "postgres" {
+	switch db.Dialector.Name() {
+	case "postgres":
 		q = q.Clauses(clause.Locking{Strength: "UPDATE", Options: "SKIP LOCKED"})
+	case "mysql":
+		// MySQL 5.7 无 SKIP LOCKED(8.0 起才支持): 退化为普通 FOR UPDATE,
+		// 并发 worker 在锁上排队, 拿到锁后按最新已提交状态重读, 已被认领(status=SENDING)的行自然跳过。
+		q = q.Clauses(clause.Locking{Strength: "UPDATE"})
 	}
 	return q
 }

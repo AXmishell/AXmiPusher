@@ -1,5 +1,5 @@
 // Package db 负责 GORM 初始化与自动迁移。
-// 业务库支持 PostgreSQL 与 SQLite, 由配置切换驱动。
+// 业务库支持 PostgreSQL / MySQL / SQLite, 由配置切换驱动。
 package db
 
 import (
@@ -12,6 +12,7 @@ import (
 	"axmipusher/internal/models"
 
 	"github.com/glebarez/sqlite"
+	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -35,6 +36,8 @@ func Open(cfg *config.Config) (*gorm.DB, error) {
 		dialector = sqlite.Open(dsn)
 	case "postgres":
 		dialector = postgres.Open(dsn)
+	case "mysql":
+		dialector = mysql.Open(dsn)
 	default:
 		return nil, fmt.Errorf("不支持的数据库类型: %s", cfg.Database.Type)
 	}
@@ -103,7 +106,8 @@ func migrateLegacySchema(gdb *gorm.DB) error {
 		switch gdb.Dialector.Name() {
 		case "sqlite":
 			gdb.Raw("SELECT count(*) FROM pragma_table_info('users') WHERE name=?", col).Scan(&hasCol)
-		case "postgres":
+		case "postgres", "mysql":
+			// MySQL 也有 information_schema.columns, 查询语句与 PG 一致。
 			gdb.Raw("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name=?)", col).Scan(&hasCol)
 		}
 		if !hasCol {

@@ -284,3 +284,41 @@ func TestPGClaimShape(t *testing.T) {
 		t.Fatalf("PG 认领 SQL 应含 ORDER BY message_id, 实际: %s", sqlStr)
 	}
 }
+
+// fakeMySQLDialector 仅报告方言名为 mysql 的假 dialector(同 fakePGDialector 思路)。
+type fakeMySQLDialector struct{}
+
+func (fakeMySQLDialector) Name() string { return "mysql" }
+func (fakeMySQLDialector) Initialize(db *gorm.DB) error {
+	callbacks.RegisterDefaultCallbacks(db, &callbacks.Config{})
+	return nil
+}
+func (fakeMySQLDialector) Migrator(*gorm.DB) gorm.Migrator                { return nil }
+func (fakeMySQLDialector) DataTypeOf(*schema.Field) string                { return "text" }
+func (fakeMySQLDialector) DefaultValueOf(*schema.Field) clause.Expression { return nil }
+func (fakeMySQLDialector) BindVarTo(writer clause.Writer, _ *gorm.Statement, _ interface{}) {
+	writer.WriteByte('?')
+}
+func (fakeMySQLDialector) QuoteTo(clause.Writer, string)               {}
+func (fakeMySQLDialector) Explain(sql string, _ ...interface{}) string { return sql }
+
+func TestMySQLClaimShape(t *testing.T) {
+	// MySQL 5.7 不支持 SKIP LOCKED(8.0 起才有): 认领 SQL 应含 FOR UPDATE 但绝不含 SKIP LOCKED。
+	my, err := gorm.Open(fakeMySQLDialector{}, &gorm.Config{DryRun: true})
+	if err != nil {
+		t.Fatalf("打开 MySQL DryRun 会话失败: %v", err)
+	}
+	s := &SQLiteStore{db: my}
+	var recs []storedMessage
+	stmt := claimQuery(s.db, 10).Find(&recs).Statement
+	sqlStr := stmt.SQL.String()
+	if !strings.Contains(sqlStr, "FOR UPDATE") {
+		t.Fatalf("MySQL 认领 SQL 应含 FOR UPDATE, 实际: %s", sqlStr)
+	}
+	if strings.Contains(sqlStr, "SKIP LOCKED") {
+		t.Fatalf("MySQL 5.7 认领 SQL 不应含 SKIP LOCKED, 实际: %s", sqlStr)
+	}
+	if !strings.Contains(sqlStr, "ORDER BY message_id") {
+		t.Fatalf("MySQL 认领 SQL 应含 ORDER BY message_id, 实际: %s", sqlStr)
+	}
+}
