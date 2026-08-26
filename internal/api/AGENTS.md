@@ -22,7 +22,7 @@ HTTP 层。Gin 引擎装配、路由、中间件、handler。依赖注入中心 
 | `/api-keys` `/compat-keys` `/callbacks` `/stats` `/templates` `/pay` `/channels` `/batch-tasks` `/inbox` | RequireAuth | 用户登录态 |
 | `/messages` | RequireAuthOrAPIKey | 网页与服务端通用 |
 | `/admin/auth` | login/login-totp 公开; `/me` `/profile` `/email` `/change-password` `/totp/*` 需管理员 JWT | 独立管理员体系(admins 表) |
-| `/admin/*`(stats/users/reviews/plans/payments/audit-logs/settings...) | RequireAdminAuth | 管理员登录态, **无平台角色门禁**(已由管理员体系取代) |
+| `/admin/*`(stats/users/plans/payments/audit-logs/settings...) | RequireAdminAuth | 管理员登录态, **无平台角色门禁**(已由管理员体系取代) |
 | `/admin/admins` | RequireAdminAuth + RequireAdminRole(super_admin) | 管理员管理(仅超管) |
 
 - 用户管理(handler/admin.go): GET /users(列表, current/pageSize) + **POST /users(新增, email/username/password 必填, 唯一性 409)** + PUT /users/:id(编辑邮箱/用户名/重置密码, 邮箱唯一排除自身) + PUT /users/:id/status(启禁用); 平台管理员不可编辑/禁用

@@ -81,7 +81,7 @@ AXmiPusher/
 - DBQueue 认领依赖惰性 getStore, 不得在构造时快照 store(Reinit 切库后轮询旧库会静默丢消息) — 已踩坑
 - 数据库队列租约回收(ReapStale): 认领租约/最大次数由 MP_QUEUE_CLAIM_TIMEOUT/MP_QUEUE_MAX_CLAIM_ATTEMPTS 控制, 轮询性能依赖 messages 表 (status, updated_at) 联合索引
 - worker 不得在构造时快照 store/registry(Reinit 后写进旧 store → 消息卡 PENDING) — 必须惰性 getter — 已踩坑
-- 模板存在"待审核版本"时禁止修改内容
+- 模板审核已移除(2026-08): 不再校验模板 status, 不创建 TemplateVersion, 无审核接口; templates.status 列保留(语义恒为 active), 发送/批量按 tenant_id+code 查询
 - Gin 根级 catch-all(`/*filepath`)与 /api 路由冲突 panic — 前端托管用 NoRoute 兜底
 - NoRoute 排除路径必须精确匹配 `/api` 或 `/api/` 前缀, 不能简单 `HasPrefix("/api")`(误伤 /api-keys 等 SPA 路由) — 已踩坑
 - 轮换 admin 路径后旧路径立即 404 废除(不重定向); 旧前缀显式路由保留但 handler 动态校验, 重启后由 NoRoute 长前缀 404 兜底 — 不得再恢复 302/301 重定向(旧地址可被传播利用)

@@ -47,3 +47,7 @@ web/*/tsconfig.tsbuildinfo
 config.yaml.bak
 deploy/context/
 web/*/package-lock.json
+
+#demo数据
+smtp
+weblogin

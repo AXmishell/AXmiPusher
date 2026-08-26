@@ -33,7 +33,7 @@
 | models | 全部业务数据模型 | GORM 标签; 无 Tenant 模型(2026-08 折叠入 User); 数据契约见 models/AGENTS.md |
 | pkg | 通用小工具 | 仅 pkg/response: 统一 API 响应格式(非死目录) |
 | queue | 队列抽象(数据库轮询) | DBQueue: 写库即入队, 轮询认领; Subscribe 阻塞; 消费逻辑在 worker |
-| service | 业务逻辑层 | 后台任务必须用独立 ctx; 模板有待审核版本禁止修改 |
+| service | 业务逻辑层 | 后台任务必须用独立 ctx |
 | store | 消息记录存储(与业务库同库) | GORM 同库; 状态机 PENDING→SENDING→SUCCESS/FAILED/RETRYING/DEAD |
 | worker | 消费者: 取任务 → 渠道分发 → 更新状态 | 由 api 内嵌 DBQueue 调用; 同步重试 3 次; 熔断错误直接进死信, 不重试 |
 
@@ -47,5 +47,5 @@
 - 配置优先级: MP_* 环境变量 > config.yaml > 默认值。
 - 后台任务必须用独立 ctx(如 context.Background)。请求 ctx 在 HTTP 结束即取消。
 - DBQueue 认领依赖惰性 getStore: 不得在构造时快照 store(Reinit 切库后轮询旧库 → 消息静默丢失)。
-- 模板存在待审核版本时禁止修改(service/template.go 会拒绝)。
+- 模板审核已移除(2026-08): 创建/更新模板即生效(status=active), 不再校验 status, 不创建 TemplateVersion, 无审核接口。
 - **租户已折叠入用户**(2026-08): 全部业务表 `tenant_id` 列名/参数名保留, 值 = 归属用户 ID; 限流/幂等/消息统计等按 tenantID 参数处一律传 user.ID。

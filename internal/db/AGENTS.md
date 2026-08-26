@@ -1,7 +1,7 @@
 # AGENTS.md: internal/db — GORM 初始化与迁移
 
 ## 定位
-三方言(PostgreSQL / MySQL 5.7 / SQLite)拨号器切换 + 17 表 AutoMigrate + 启动时旧库迁移。全仓唯一数据库入口(app.Build 经 db.Open)。
+三方言(PostgreSQL / MySQL 5.7 / SQLite)拨号器切换 + 16 表 AutoMigrate + 启动时旧库迁移。全仓唯一数据库入口(app.Build 经 db.Open)。
 
 ## 核心语义
 

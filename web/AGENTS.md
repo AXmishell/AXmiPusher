@@ -21,7 +21,7 @@
 ## 页面清单
 
 - user 12 页(Dashboard / SendMessage / Messages / ApiKeys / Callbacks / Plans / Channels / Inbox / BatchTasks / Profile(账户设置) / Login / Register): **CompatKeys 非独立页面** — `/compat-keys` 路由重定向到 `/api-keys`, Server酱 兼容管理是 ApiKeys.tsx 内 Tab(下拉选项: Server酱·Turbo版(sctapi, 值 serverchan_v2)/ Server酱3(sc, 值 serverchan_v1))
-- admin 10 页: Users / Admins(管理员管理, 仅超管可见) / Reviews / Plans / Payments / AuditLogs / Settings(系统设置) / Account(账户设置) / Dashboard / Login
+- admin 9 页: Users / Admins(管理员管理, 仅超管可见) / Plans / Payments / AuditLogs / Settings(系统设置) / Account(账户设置) / Dashboard / Login(模板审核已移除 2026-08, 无 Reviews 页)
 - admin Users 页: 支持**新增用户**(工具栏按钮 → 邮箱/用户名/密码)+ **编辑用户**(邮箱/用户名/重置密码, ModalForm)+ 启禁用; 用户表无 tenant_id 列(租户已折叠, ID 即用户 ID)
 - admin Settings 页: 管理员后台路径支持**自定义填写(8-32 位字母数字)+ 应用 + 随机轮换**, 应用/轮换后旧路径 404 废除并自动跳转新路径
 - 2026-08 名称/昵称已合并为用户名: User 只保留 nickname(注册时默认 email), 无 name/tenant_name; 账户设置页 Profile(用户中心)/Account(管理后台)展示账号 ID/用户名/邮箱/注册时间/最近登录 IP, 支持改用户名/QQ/邮箱/密码/TOTP

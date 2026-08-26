@@ -12,7 +12,7 @@
 | BatchService | 批量任务后台 runner | db, MessageService |
 | PaymentService | 易支付下单/验签/回调/订阅生效 | db, SettingsService |
 | SettingsService | DB 键值设置 | db |
-| TemplateService | 模板 + 审核流 | db |
+| TemplateService | 模板 CRUD(创建即生效) | db |
 | RateLimiter(接口) | 内存/Redis 双实现 | — |
 
 ## 关键逻辑
@@ -51,11 +51,10 @@
 - 回调链路: 验签 → pid 校验 → trade_status=TRADE_SUCCESS → 金额比对(±0.001) → 订单 paid → activateSubscription。
 - 幂等: 已 paid 直接返回成功; 订阅同套餐未过期则顺延, 否则从现在起。
 
-### 模板审核流(TemplateService)
-- 创建模板自动生成 v1 待审版本(TemplateVersion), 模板 status=pending。
-- **有待审版本时禁止再改**(UpdateTemplate 先 count pending, 非零即拒绝)。
-- ApproveVersion: 版本 approved, 模板 content 更新为该版本内容, status→active。
-- RejectVersion: 无其它 pending 时模板回退 rejected。
+### 模板(TemplateService, 审核已移除 2026-08)
+- 创建即生效: CreateTemplate 直接 status=active, 不再生成 TemplateVersion / 不再待审。
+- UpdateTemplate 直接更新 content 并显式置 status=active, 无"待审核禁止修改"门禁。
+- 发送链路(message.go/batch.go)按 `tenant_id + code` 查询模板, 不再过滤 status。
 
 ### 消息状态机
 PENDING → SENDING → SUCCESS/FAILED/RETRYING/DEAD(定义见 store.Message)。
