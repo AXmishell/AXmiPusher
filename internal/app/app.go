@@ -77,14 +77,6 @@ func (a *App) Build() error {
 
 	// 消息队列。
 	switch cfg.Queue.Type {
-	case "inprocess":
-		a.Queue = queue.NewInProcessQueue(cfg.Queue.BufferSize, cfg.Queue.Concurrency)
-	case "kafka":
-		q, err := queue.NewKafkaQueue(cfg.Queue.Brokers, cfg.Queue.Topic, cfg.Queue.GroupID, cfg.Queue.Concurrency)
-		if err != nil {
-			return err
-		}
-		a.Queue = q
 	default:
 		return fmt.Errorf("不支持的队列类型: %s", cfg.Queue.Type)
 	}
