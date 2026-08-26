@@ -159,7 +159,8 @@ func (q *DBQueue) work(ctx context.Context, handler Handler, sem chan struct{}, 
 		CreatedAt:  m.CreatedAt,
 	}
 	if err := handler(ctx, tm); err != nil {
-		// handler 失败仅记录丢弃: 消息停留在 SENDING, 由后续 ReapStale 回收重试。
+		// 生产链路中 handler 内部(worker.Handle)已处理重试与终态(SUCCESS/DEAD)且不返回错误;
+		// 此处错误分支为防御性保留, 消息若留 SENDING/RETRYING 由 ReapStale 回收。
 		log.Printf("[queue:db] 处理消息 %d 失败: %v", m.MessageID, err)
 	}
 }

@@ -535,10 +535,6 @@ paths:
                     password: { type: string }
                     name: { type: string }
                     sslmode: { type: string }
-                store_type: { type: string, enum: [sqlite, clickhouse] }
-                ch_dsn: { type: string }
-                queue_type: { type: string, enum: [inprocess, kafka] }
-                kafka_brokers: { type: string }
       responses:
         '200':
           description: 逐项检测结果
@@ -558,10 +554,6 @@ paths:
                 db_type: { type: string, enum: [sqlite, postgres] }
                 sqlite_path: { type: string }
                 pg: { type: object }
-                store_type: { type: string, enum: [sqlite, clickhouse] }
-                ch_dsn: { type: string }
-                queue_type: { type: string, enum: [inprocess, kafka] }
-                kafka_brokers: { type: string }
                 retention_days: { type: integer }
       responses:
         '200':
