@@ -5,8 +5,8 @@ import { PlusOutlined } from '@ant-design/icons';
 import { request, type User } from '../api/client';
 
 const roleMap: Record<string, { color: string; text: string }> = {
-  tenant_admin: { color: 'blue', text: '租户管理员' },
-  tenant_user: { color: 'default', text: '租户用户' },
+  tenant_admin: { color: 'blue', text: '自助注册' },
+  tenant_user: { color: 'default', text: '管理注册' },
   platform_admin: { color: 'purple', text: '平台管理员' },
 };
 
@@ -61,7 +61,7 @@ export default function Users() {
           { title: '邮箱', dataIndex: 'email', width: 220, copyable: true },
           { title: '用户名', dataIndex: 'nickname', width: 120 },
           {
-            title: '角色',
+            title: '注册方式',
             dataIndex: 'role',
             width: 120,
             render: (_, r) => {

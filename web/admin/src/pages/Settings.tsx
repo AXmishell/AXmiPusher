@@ -74,6 +74,7 @@ export default function Settings() {
       <Row gutter={16}>
         <Col span={12}>
           <Card title={<><MailOutlined /> 邮件渠道 SMTP</>}>
+            <Alert style={{ marginBottom: 16 }} type="info" showIcon message="系统邮件 — 仅用于发送注册/登录验证码等系统邮件; 用户中心邮件渠道需在用户中心自行配置 SMTP" />
             <Form form={smtpForm} layout="vertical" onFinish={saveSmtp}>
               <Form.Item name="host" label="SMTP 主机" rules={[{ required: true }]}>
                 <Input placeholder="smtp.example.com" />
