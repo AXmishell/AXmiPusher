@@ -10,6 +10,7 @@ import Plans from './pages/Plans';
 import Payments from './pages/Payments';
 import AuditLogs from './pages/AuditLogs';
 import Settings from './pages/Settings';
+import Account from './pages/Account';
 
 export default function App() {
   // 动态取当前路径第一段作为 basename, 支持轮换 admin 路径后无需重新构建。
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="payments" element={<Payments />} />
           <Route path="audit-logs" element={<AuditLogs />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="account" element={<Account />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

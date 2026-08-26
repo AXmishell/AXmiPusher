@@ -240,8 +240,8 @@ func (s *AuthService) ParseToken(tokenStr string) (*models.User, error) {
 	return &user, nil
 }
 
-// AdminLogin 管理员登录(查 admins 表)。
-func (s *AuthService) AdminLogin(email, password string) (*models.Admin, error) {
+// AdminLogin 管理员登录(查 admins 表, 记录最近一次登录 IP)。
+func (s *AuthService) AdminLogin(email, password, ip string) (*models.Admin, error) {
 	var admin models.Admin
 	if err := s.db.Where("email = ?", email).First(&admin).Error; err != nil {
 		return nil, ErrBadCredential
@@ -253,7 +253,51 @@ func (s *AuthService) AdminLogin(email, password string) (*models.Admin, error) 
 		return nil, ErrUserDisabled
 	}
 	now := time.Now()
-	s.db.Model(&admin).Update("last_login_at", &now)
+	s.db.Model(&admin).Updates(map[string]interface{}{"last_login_at": &now, "last_login_ip": ip})
+	return &admin, nil
+}
+
+// AdminUpdateProfile 更新管理员账户资料: 昵称/QQ。
+func (s *AuthService) AdminUpdateProfile(adminID uint64, nickname, qq string) (*models.Admin, error) {
+	var admin models.Admin
+	if err := s.db.First(&admin, adminID).Error; err != nil {
+		return nil, err
+	}
+	updates := map[string]interface{}{}
+	if nickname != "" {
+		updates["nickname"] = nickname
+	}
+	updates["qq"] = qq
+	if len(updates) > 0 {
+		if err := s.db.Model(&admin).Updates(updates).Error; err != nil {
+			return nil, err
+		}
+	}
+	if err := s.db.First(&admin, adminID).Error; err != nil {
+		return nil, err
+	}
+	return &admin, nil
+}
+
+// AdminChangeEmail 修改管理员登录邮箱(admins 表唯一性校验, 冲突返回 ErrEmailExists)。
+func (s *AuthService) AdminChangeEmail(adminID uint64, newEmail string) (*models.Admin, error) {
+	var count int64
+	if err := s.db.Model(&models.Admin{}).Where("email = ? AND id != ?", newEmail, adminID).Count(&count).Error; err != nil {
+		return nil, err
+	}
+	if count > 0 {
+		return nil, ErrEmailExists
+	}
+	var admin models.Admin
+	if err := s.db.First(&admin, adminID).Error; err != nil {
+		return nil, err
+	}
+	if err := s.db.Model(&admin).Update("email", newEmail).Error; err != nil {
+		return nil, err
+	}
+	if err := s.db.First(&admin, adminID).Error; err != nil {
+		return nil, err
+	}
 	return &admin, nil
 }
 

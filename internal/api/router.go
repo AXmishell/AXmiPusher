@@ -153,6 +153,8 @@ func NewRouter(a *app.App) *gin.Engine {
 			// 管理员认证(登录公开, 其余需管理员 JWT)。
 			admin.POST("/auth/login", handler.AdminLogin(a))
 			admin.GET("/auth/me", middleware.RequireAdminAuth(getAdminAuth), handler.AdminMe(a))
+			admin.PUT("/auth/profile", middleware.RequireAdminAuth(getAdminAuth), handler.AdminUpdateProfile(a))
+			admin.PUT("/auth/email", middleware.RequireAdminAuth(getAdminAuth), handler.AdminChangeEmail(a))
 			admin.POST("/auth/change-password", middleware.RequireAdminAuth(getAdminAuth), handler.AdminChangePassword(a))
 
 			// 需管理员登录的管理端点。

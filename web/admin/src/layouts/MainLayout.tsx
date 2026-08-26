@@ -11,6 +11,7 @@ import {
   LogoutOutlined,
   SafetyCertificateOutlined,
   LockOutlined,
+  IdcardOutlined,
 } from '@ant-design/icons';
 import { Dropdown, Space, Avatar } from 'antd';
 import { useEffect, useState } from 'react';
@@ -53,6 +54,7 @@ export default function MainLayout() {
     { path: '/payments', name: '支付订单', icon: <PayCircleOutlined /> },
     { path: '/audit-logs', name: '审计日志', icon: <FileSearchOutlined /> },
     { path: '/settings', name: '系统设置', icon: <SettingOutlined /> },
+    { path: '/account', name: '账户设置', icon: <IdcardOutlined /> },
   ];
   if (user?.role === 'super_admin') {
     menuRoutes.push({ path: '/admins', name: '管理员管理', icon: <SafetyCertificateOutlined /> });
