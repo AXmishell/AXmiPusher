@@ -26,8 +26,8 @@ const (
 type AuthService interface {
 	// ParseToken 解析 JWT 返回用户。
 	ParseToken(token string) (*models.User, error)
-	// ResolveAPIKey 解析 API Key 返回租户。
-	ResolveAPIKey(key string) (*models.APIKey, *models.Tenant, error)
+	// ResolveAPIKey 解析 API Key 返回 key(tenant_id 即归属用户 ID)。
+	ResolveAPIKey(key string) (*models.APIKey, error)
 }
 
 // AdminAuthService 管理员认证服务接口(由 service 层实现)。
@@ -66,14 +66,14 @@ func RequireAPIKey(getAuth func() AuthService) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		apiKey, tenant, err := getAuth().ResolveAPIKey(key)
+		apiKey, err := getAuth().ResolveAPIKey(key)
 		if err != nil || apiKey == nil {
 			response.Unauthorized(c, "API Key 无效")
 			c.Abort()
 			return
 		}
 		c.Set(string(CtxAPIKey), apiKey)
-		c.Set(string(CtxTenant), tenant)
+		c.Set(string(CtxTenant), apiKey.TenantID)
 		c.Next()
 	}
 }
@@ -89,9 +89,9 @@ func RequireAuthOrAPIKey(getAuth func() AuthService) gin.HandlerFunc {
 		}
 		auth := getAuth()
 		// 优先尝试 API Key(服务端场景)。
-		if apiKey, tenant, err := auth.ResolveAPIKey(token); err == nil && apiKey != nil {
+		if apiKey, err := auth.ResolveAPIKey(token); err == nil && apiKey != nil {
 			c.Set(string(CtxAPIKey), apiKey)
-			c.Set(string(CtxTenant), tenant)
+			c.Set(string(CtxTenant), apiKey.TenantID)
 			c.Next()
 			return
 		}
@@ -232,12 +232,12 @@ func CurrentAdmin(c *gin.Context) *models.Admin {
 	return nil
 }
 
-// CurrentTenant 从上下文取当前租户。
-func CurrentTenant(c *gin.Context) *models.Tenant {
+// CurrentTenantID 从上下文取当前归属用户 ID(API Key 场景写入, JWT 场景用 CurrentUser.ID)。
+func CurrentTenantID(c *gin.Context) uint64 {
 	if v, ok := c.Get(string(CtxTenant)); ok {
-		if t, ok := v.(*models.Tenant); ok {
-			return t
+		if id, ok := v.(uint64); ok {
+			return id
 		}
 	}
-	return nil
+	return 0
 }

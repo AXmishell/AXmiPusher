@@ -25,7 +25,7 @@ export default function Payments() {
       }}
       columns={[
         { title: 'ID', dataIndex: 'id', width: 70 },
-        { title: '租户 ID', dataIndex: 'tenant_id', width: 90 },
+        { title: '用户 ID', dataIndex: 'tenant_id', width: 90 },
         { title: '平台订单号', dataIndex: 'out_trade_no', width: 190, copyable: true },
         { title: '易支付单号', dataIndex: 'epay_trade_no', width: 170, ellipsis: true },
         { title: '金额', dataIndex: 'amount', width: 100, render: (_, r) => `¥${r.amount}` },

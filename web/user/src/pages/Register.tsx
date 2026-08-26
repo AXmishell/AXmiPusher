@@ -30,7 +30,7 @@ export default function Register() {
           <Typography.Title level={3} style={{ marginTop: 12, marginBottom: 4 }}>
             注册账号
           </Typography.Title>
-          <Typography.Text type="secondary">注册即创建独立租户空间</Typography.Text>
+          <Typography.Text type="secondary">注册即创建独立空间</Typography.Text>
         </div>
         <Form layout="vertical" onFinish={onFinish}>
           <Form.Item name="email" label="邮箱" rules={[{ required: true, type: 'email', message: '请输入有效邮箱' }]}>
@@ -39,8 +39,8 @@ export default function Register() {
           <Form.Item name="nickname" label="昵称">
             <Input placeholder="你的昵称" size="large" />
           </Form.Item>
-          <Form.Item name="tenant_name" label="租户名称" rules={[{ required: true, message: '请输入租户名称' }]}>
-            <Input placeholder="例如: 我的团队" size="large" />
+          <Form.Item name="tenant_name" label="名称">
+            <Input placeholder="你的名称" size="large" />
           </Form.Item>
           <Form.Item name="password" label="密码" rules={[{ required: true, min: 8, message: '密码至少 8 位' }]}>
             <Input.Password placeholder="至少 8 位" size="large" />

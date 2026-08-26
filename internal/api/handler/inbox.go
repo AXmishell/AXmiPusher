@@ -29,7 +29,7 @@ func ListInbox(a *app.App) gin.HandlerFunc {
 		if size < 1 || size > 100 {
 			size = 20
 		}
-		q := a.DB.Model(&models.InappMessage{}).Where("tenant_id = ? AND user_id = ?", user.TenantID, user.ID)
+		q := a.DB.Model(&models.InappMessage{}).Where("tenant_id = ? AND user_id = ?", user.ID, user.ID)
 		if read == "true" {
 			q = q.Where("is_read = ?", true)
 		} else if read == "false" {
@@ -56,7 +56,7 @@ func UnreadInboxCount(a *app.App) gin.HandlerFunc {
 		}
 		var count int64
 		a.DB.Model(&models.InappMessage{}).
-			Where("tenant_id = ? AND user_id = ? AND is_read = ?", user.TenantID, user.ID, false).
+			Where("tenant_id = ? AND user_id = ? AND is_read = ?", user.ID, user.ID, false).
 			Count(&count)
 		response.OK(c, gin.H{"unread": count})
 	}
@@ -77,7 +77,7 @@ func MarkInboxRead(a *app.App) gin.HandlerFunc {
 		}
 		now := time.Now()
 		res := a.DB.Model(&models.InappMessage{}).
-			Where("id = ? AND tenant_id = ? AND user_id = ?", id, user.TenantID, user.ID).
+			Where("id = ? AND tenant_id = ? AND user_id = ?", id, user.ID, user.ID).
 			Updates(map[string]any{"is_read": true, "read_at": &now})
 		if res.RowsAffected == 0 {
 			response.NotFound(c, "消息不存在")
@@ -97,7 +97,7 @@ func MarkAllInboxRead(a *app.App) gin.HandlerFunc {
 		}
 		now := time.Now()
 		a.DB.Model(&models.InappMessage{}).
-			Where("tenant_id = ? AND user_id = ? AND is_read = ?", user.TenantID, user.ID, false).
+			Where("tenant_id = ? AND user_id = ? AND is_read = ?", user.ID, user.ID, false).
 			Updates(map[string]any{"is_read": true, "read_at": &now})
 		response.OK(c, gin.H{"ok": true})
 	}

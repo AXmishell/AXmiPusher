@@ -2,7 +2,6 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ProLayout } from '@ant-design/pro-components';
 import {
   DashboardOutlined,
-  TeamOutlined,
   UserOutlined,
   AuditOutlined,
   GiftOutlined,
@@ -48,7 +47,6 @@ export default function MainLayout() {
   // 侧边菜单: 管理员管理仅超管可见。
   const menuRoutes = [
     { path: '/', name: '平台概览', icon: <DashboardOutlined /> },
-    { path: '/tenants', name: '租户管理', icon: <TeamOutlined /> },
     { path: '/users', name: '用户管理', icon: <UserOutlined /> },
     { path: '/reviews', name: '模板审核', icon: <AuditOutlined /> },
     { path: '/plans', name: '套餐管理', icon: <GiftOutlined /> },

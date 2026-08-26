@@ -16,14 +16,13 @@ import {
 } from '@ant-design/icons';
 import { Dropdown, Space, Avatar, Badge } from 'antd';
 import { useEffect, useState } from 'react';
-import { request, type User, type Tenant } from '../api/client';
+import { request, type User } from '../api/client';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 
 export default function MainLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
-  const [tenant, setTenant] = useState<Tenant | null>(null);
   const [unread, setUnread] = useState(0);
   const [pwdOpen, setPwdOpen] = useState(false);
 
@@ -33,10 +32,9 @@ export default function MainLayout() {
       navigate('/login', { replace: true });
       return;
     }
-    request<{ user: User; tenant: Tenant }>({ url: '/auth/me', method: 'GET' })
+    request<{ user: User }>({ url: '/auth/me', method: 'GET' })
       .then((d) => {
         setUser(d.user);
-        setTenant(d.tenant);
         // 拉取未读站内信数(菜单角标)。
         request<{ unread: number }>({ url: '/inbox/unread-count', method: 'GET' })
           .then((u) => setUnread(u.unread))
@@ -107,9 +105,9 @@ export default function MainLayout() {
       actionsRender={() => [
         <Space key="tenant" style={{ marginRight: 16, color: 'rgba(0,0,0,.65)' }}>
           <Avatar size="small" style={{ background: '#1e40af' }}>
-            {tenant?.name?.charAt(0) || 'T'}
+            {(user?.name || user?.nickname || '').charAt(0) || 'U'}
           </Avatar>
-          租户: {tenant?.name || '-'}
+          名称: {user?.name || user?.nickname || '-'}
         </Space>,
       ]}
       layout="mix"

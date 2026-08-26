@@ -54,16 +54,21 @@ func NewAuthService(db *gorm.DB, cfg *config.Config) *AuthService {
 	}
 }
 
-// Register 开放注册: 创建租户 + 租户管理员。
-func (s *AuthService) Register(email, password, tenantName, nickname string) (*models.User, *models.Tenant, error) {
-	if err := validatePassword(password); err != nil {
-		return nil, nil, err
+// defaultIfEmpty 空值回退。
+func defaultIfEmpty(v, fallback string) string {
+	if v == "" {
+		return fallback
 	}
-	if tenantName == "" {
-		tenantName = email
+	return v
+}
+
+// Register 开放注册: 直接创建用户(租户已折叠入用户, 业务表 tenant_id 即用户 ID)。
+func (s *AuthService) Register(email, password, tenantName, nickname string) (*models.User, error) {
+	if err := validatePassword(password); err != nil {
+		return nil, err
 	}
 
-	var tenant models.Tenant
+	user := models.User{}
 	err := s.db.Transaction(func(tx *gorm.DB) error {
 		var count int64
 		if err := tx.Model(&models.User{}).Where("email = ?", email).Count(&count).Error; err != nil {
@@ -72,35 +77,24 @@ func (s *AuthService) Register(email, password, tenantName, nickname string) (*m
 		if count > 0 {
 			return ErrEmailExists
 		}
-		tenant = models.Tenant{Name: tenantName, Status: models.StatusActive}
-		if err := tx.Create(&tenant).Error; err != nil {
-			return err
-		}
 		hash, err := bcrypt.GenerateFromPassword([]byte(password), 10)
 		if err != nil {
 			return err
 		}
-		user := models.User{
-			TenantID:     tenant.ID,
+		user = models.User{
 			Email:        email,
 			PasswordHash: string(hash),
 			Nickname:     nickname,
+			Name:         defaultIfEmpty(tenantName, email),
 			Role:         models.RoleTenantAdmin,
 			Status:       models.StatusActive,
 		}
-		if err := tx.Create(&user).Error; err != nil {
-			return err
-		}
-		return nil
+		return tx.Create(&user).Error
 	})
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	user := &models.User{}
-	if err := s.db.Where("email = ?", email).First(user).Error; err != nil {
-		return nil, nil, err
-	}
-	return user, &tenant, nil
+	return &user, nil
 }
 
 // Login 登录。
@@ -149,7 +143,7 @@ func (s *AuthService) ChangePassword(userID uint64, oldPassword, newPassword str
 func (s *AuthService) CreateToken(user *models.User) (string, error) {
 	claims := jwtClaims{
 		UserID:   user.ID,
-		TenantID: user.TenantID,
+		TenantID: user.ID,
 		Role:     user.Role,
 		Kind:     "user",
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -367,22 +361,18 @@ func (s *AuthService) CreateAPIKey(tenantID uint64, name, scopes string, expires
 	return key, plain, nil
 }
 
-// ResolveAPIKey 校验 API Key, 返回 key 与所属租户。
-func (s *AuthService) ResolveAPIKey(plain string) (*models.APIKey, *models.Tenant, error) {
+// ResolveAPIKey 校验 API Key, 返回 key(tenant_id 即归属用户 ID)。
+func (s *AuthService) ResolveAPIKey(plain string) (*models.APIKey, error) {
 	var key models.APIKey
 	if err := s.db.Where("key_hash = ? AND status = ?", hashKey(plain), models.StatusActive).First(&key).Error; err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if key.ExpiresAt != nil && time.Now().After(*key.ExpiresAt) {
-		return nil, nil, fmt.Errorf("API Key 已过期")
+		return nil, fmt.Errorf("API Key 已过期")
 	}
 	now := time.Now()
 	s.db.Model(&key).Update("last_used_at", &now)
-	var tenant models.Tenant
-	if err := s.db.First(&tenant, key.TenantID).Error; err != nil {
-		return nil, nil, err
-	}
-	return &key, &tenant, nil
+	return &key, nil
 }
 
 // RevokeAPIKey 吊销 API Key。

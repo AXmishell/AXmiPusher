@@ -11,16 +11,13 @@ export interface ApiResp<T = unknown> {
 // 后端返回的业务对象类型。
 export interface User {
   id: number;
-  tenant_id: number;
+  name?: string;
   email: string;
   nickname: string;
   role: string;
   status: string;
-}
-
-export interface Tenant {
-  id: number;
-  name: string;
+  quota?: string;
+  plan_id?: number;
 }
 
 export interface ApiKey {

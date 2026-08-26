@@ -29,7 +29,7 @@ func Register(a *app.App) gin.HandlerFunc {
 			response.BadRequest(c, "参数错误: "+err.Error())
 			return
 		}
-		user, tenant, err := a.Auth.Register(req.Email, req.Password, req.TenantName, req.Nickname)
+		user, err := a.Auth.Register(req.Email, req.Password, req.TenantName, req.Nickname)
 		if err != nil {
 			response.Conflict(c, err.Error())
 			return
@@ -40,9 +40,8 @@ func Register(a *app.App) gin.HandlerFunc {
 			return
 		}
 		response.OK(c, gin.H{
-			"token":    token,
-			"user":     user,
-			"tenant":   gin.H{"id": tenant.ID, "name": tenant.Name},
+			"token": token,
+			"user":  user,
 		})
 	}
 }
@@ -115,13 +114,8 @@ func Me(a *app.App) gin.HandlerFunc {
 			response.Unauthorized(c, "未登录")
 			return
 		}
-		var tenant models.Tenant
-		if user.TenantID > 0 {
-			a.DB.First(&tenant, user.TenantID)
-		}
 		response.OK(c, gin.H{
-			"user":   user,
-			"tenant": tenant,
+			"user":     user,
 			"is_admin": user.Role == models.RolePlatformAdmin,
 		})
 	}

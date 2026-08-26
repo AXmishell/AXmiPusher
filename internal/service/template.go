@@ -149,9 +149,9 @@ func (s *TemplateService) ListReviews(status string, page, size int) ([]ReviewIt
 		size = 20
 	}
 	q := s.db.Table("template_versions v").
-		Select("t.id as template_id, t.tenant_id, t.code, t.name, t.channel_type, v.id as version_id, v.version, v.content, v.review_status, t.current_version, v.created_at, ten.name as tenant_name").
+		Select("t.id as template_id, t.tenant_id, t.code, t.name, t.channel_type, v.id as version_id, v.version, v.content, v.review_status, t.current_version, v.created_at, u.name as tenant_name").
 		Joins("JOIN templates t ON t.id = v.template_id").
-		Joins("LEFT JOIN tenants ten ON ten.id = t.tenant_id")
+		Joins("LEFT JOIN users u ON u.id = t.tenant_id")
 	if status != "" {
 		q = q.Where("v.review_status = ?", status)
 	}

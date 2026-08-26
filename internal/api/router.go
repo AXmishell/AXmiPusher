@@ -157,8 +157,6 @@ func NewRouter(a *app.App) *gin.Engine {
 			authed := admin.Group("", middleware.RequireAdminAuth(getAdminAuth))
 			{
 				authed.GET("/stats", handler.AdminStats(a))
-				authed.GET("/tenants", handler.ListTenants(a))
-				authed.PUT("/tenants/:id/status", handler.SetTenantStatus(a))
 				authed.GET("/users", handler.ListUsers(a))
 				authed.PUT("/users/:id/status", handler.SetUserStatus(a))
 				authed.GET("/templates/reviews", handler.ListReviews(a))

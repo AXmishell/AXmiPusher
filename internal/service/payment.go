@@ -264,7 +264,7 @@ func activateSubscription(tx *gorm.DB, tenantID, planID uint64, now time.Time) e
 	if err := tx.Create(&sub).Error; err != nil {
 		return err
 	}
-	return tx.Model(&models.Tenant{}).Where("id = ?", tenantID).Update("plan_id", planID).Error
+	return tx.Model(&models.User{}).Where("id = ?", tenantID).Update("plan_id", planID).Error
 }
 
 // genOutTradeNo 生成平台订单号: MP + 时间戳 + 随机。

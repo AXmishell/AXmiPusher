@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Form, Input, Button, Card, Typography, message } from 'antd';
 import { SendOutlined } from '@ant-design/icons';
 import { useNavigate, Link } from 'react-router-dom';
-import { request, type User, type Tenant } from '../api/client';
+import { request, type User } from '../api/client';
 
 export default function Login() {
   const [loading, setLoading] = useState(false);

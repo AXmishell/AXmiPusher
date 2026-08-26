@@ -21,11 +21,11 @@ export default function Users() {
       rowKey="id"
       search={{ labelWidth: 'auto' }}
       request={async (params) => {
-        const { current = 1, pageSize = 20, tenant_id, email, ...rest } = params as any;
+        const { current = 1, pageSize = 20, email, ...rest } = params as any;
         const d = await request<{ data: User[]; total: number }>({
           url: '/admin/users',
           method: 'GET',
-          params: { current, pageSize, tenant_id: tenant_id || undefined, ...rest },
+          params: { current, pageSize, ...rest },
         });
         return { data: d.data, total: d.total, success: true };
       }}
@@ -33,7 +33,7 @@ export default function Users() {
         { title: 'ID', dataIndex: 'id', width: 70 },
         { title: '邮箱', dataIndex: 'email', width: 220, copyable: true },
         { title: '昵称', dataIndex: 'nickname', width: 120 },
-        { title: '租户 ID', dataIndex: 'tenant_id', width: 90 },
+        { title: '用户 ID', dataIndex: 'tenant_id', width: 90 },
         {
           title: '角色',
           dataIndex: 'role',

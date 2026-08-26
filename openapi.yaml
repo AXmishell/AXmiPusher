@@ -43,7 +43,7 @@ paths:
               properties:
                 email: { type: string, format: email, example: user@example.com }
                 password: { type: string, minLength: 8, example: secret123456 }
-                tenant_name: { type: string, example: 我的团队 }
+                tenant_name: { type: string, description: 名称(可选, 默认邮箱), example: 我的团队 }
                 nickname: { type: string }
       responses:
         '200':
@@ -78,7 +78,7 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         '200':
-          description: 当前用户与租户
+          description: 当前用户信息
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MeResult' }
@@ -603,19 +603,16 @@ components:
           type: object
           properties:
             user: { $ref: '#/components/schemas/User' }
-            tenant:
-              type: object
-              properties:
-                id: { type: integer }
-                name: { type: string }
             is_admin: { type: boolean }
     User:
       type: object
       properties:
         id: { type: integer }
-        tenant_id: { type: integer }
         email: { type: string }
         nickname: { type: string }
+        name: { type: string, description: 名称(原租户名, 注册时默认邮箱) }
+        quota: { type: string, description: JSON 配额信息(套餐驱动) }
+        plan_id: { type: integer, description: 当前套餐 ID }
         role: { type: string, enum: [tenant_admin, tenant_user, platform_admin] }
         status: { type: string }
     Admin:

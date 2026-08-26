@@ -156,13 +156,10 @@ func genExternalKey() string {
 	return string(buf)
 }
 
-// resolveTenantID 从上下文解析租户 ID(JWT 用户或 API Key 租户)。
+// resolveTenantID 从上下文解析归属用户 ID(JWT 用户自身或 API Key 所属用户)。
 func resolveTenantID(c *gin.Context) uint64 {
 	if u := middleware.CurrentUser(c); u != nil {
-		return u.TenantID
+		return u.ID
 	}
-	if t := middleware.CurrentTenant(c); t != nil {
-		return t.ID
-	}
-	return 0
+	return middleware.CurrentTenantID(c)
 }

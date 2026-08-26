@@ -62,7 +62,6 @@ func Open(cfg *config.Config) (*gorm.DB, error) {
 // migrate 自动迁移全部业务表。
 func migrate(gdb *gorm.DB) error {
 	if err := gdb.AutoMigrate(
-		&models.Tenant{},
 		&models.User{},
 		&models.Admin{},
 		&models.APIKey{},

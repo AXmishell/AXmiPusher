@@ -9,11 +9,13 @@ export interface ApiResp<T = unknown> {
 
 export interface User {
   id: number;
-  tenant_id: number;
+  name?: string;
   email: string;
   nickname: string;
   role: string;
   status: string;
+  quota?: string;
+  plan_id?: number;
 }
 
 export interface Admin {
@@ -24,16 +26,6 @@ export interface Admin {
   status: string;
   last_login_at?: string | null;
   created_at: string;
-}
-
-export interface TenantRow {
-  id: number;
-  name: string;
-  status: string;
-  plan_id: number;
-  created_at: string;
-  user_count: number;
-  msg_24h: number;
 }
 
 export interface ReviewItem {

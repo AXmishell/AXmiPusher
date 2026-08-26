@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Row, Col, Card, Statistic } from 'antd';
-import { TeamOutlined, UserOutlined, SendOutlined, AuditOutlined, FileProtectOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { UserOutlined, SendOutlined, AuditOutlined, FileProtectOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { request } from '../api/client';
 
 interface AdminStats {
   messages: { total: number; success: number; failed: number; success_rate: number };
-  tenants: number;
   users: number;
   templates: number;
   pending_reviews: number;
@@ -21,9 +20,6 @@ export default function Dashboard() {
   return (
     <div>
       <Row gutter={16}>
-        <Col span={6}>
-          <Card><Statistic title="租户数" value={stats?.tenants ?? '-'} prefix={<TeamOutlined />} /></Card>
-        </Col>
         <Col span={6}>
           <Card><Statistic title="用户数" value={stats?.users ?? '-'} prefix={<UserOutlined />} /></Card>
         </Col>

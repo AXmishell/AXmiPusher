@@ -3,8 +3,6 @@ package models
 
 import (
 	"time"
-
-	"gorm.io/gorm"
 )
 
 // 通用状态常量。
@@ -54,30 +52,20 @@ const (
 	CompatSourceServerChanV2 = "serverchan_v2" // /api/sctapi/{SendKey}
 )
 
-// Tenant 租户。
-type Tenant struct {
-	ID         uint64         `gorm:"primaryKey;autoIncrement" json:"id"`
-	Name       string         `gorm:"size:128;not null;uniqueIndex" json:"name"`
-	Status     string         `gorm:"size:16;not null;default:active" json:"status"`
-	Quota      string         `gorm:"type:text" json:"quota"` // JSONB: 配额信息(套餐驱动)
-	PlanID     uint64         `json:"plan_id"`
-	CreatedAt  time.Time      `json:"created_at"`
-	UpdatedAt  time.Time      `json:"updated_at"`
-	DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`
-}
-
-// User 用户(开放注册, 属于某个租户)。
+// User 用户(开放注册, 直接承载配额/套餐; 业务表 tenant_id 的值即归属用户 ID)。
 type User struct {
-	ID           uint64    `gorm:"primaryKey;autoIncrement" json:"id"`
-	TenantID     uint64    `gorm:"not null;index" json:"tenant_id"`
-	Email        string    `gorm:"size:255;not null;uniqueIndex" json:"email"`
-	PasswordHash string    `gorm:"size:255;not null" json:"-"`
-	Nickname     string    `gorm:"size:64" json:"nickname"`
-	Role         string    `gorm:"size:32;not null;default:tenant_user" json:"role"`
-	Status       string    `gorm:"size:16;not null;default:active" json:"status"`
+	ID           uint64     `gorm:"primaryKey;autoIncrement" json:"id"`
+	Email        string     `gorm:"size:255;not null;uniqueIndex" json:"email"`
+	PasswordHash string     `gorm:"size:255;not null" json:"-"`
+	Nickname     string     `gorm:"size:64" json:"nickname"`
+	Name         string     `gorm:"size:128" json:"name"`   // 名称(原租户名, 注册时默认 email)
+	Quota        string     `gorm:"type:text" json:"quota"` // JSONB: 配额信息(套餐驱动)
+	PlanID       uint64     `json:"plan_id"`                // 当前套餐
+	Role         string     `gorm:"size:32;not null;default:tenant_user" json:"role"`
+	Status       string     `gorm:"size:16;not null;default:active" json:"status"`
 	LastLoginAt  *time.Time `json:"last_login_at"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 // Admin 平台管理员(独立于用户中心 users 表, 支持多管理员)。

@@ -31,7 +31,7 @@ export default function Reviews() {
       }}
       columns={[
         { title: 'ID', dataIndex: 'template_id', width: 70 },
-        { title: '租户', dataIndex: 'tenant_name', width: 130 },
+        { title: '用户', dataIndex: 'tenant_name', width: 130 },
         { title: '编码', dataIndex: 'code', width: 130, render: (_, r) => <Tag>{r.code}</Tag> },
         { title: '名称', dataIndex: 'name', width: 120 },
         {
