@@ -156,11 +156,12 @@ func (s *BatchService) process(ctx context.Context, taskID uint64) {
 	var template *models.Template
 	if cfg.TemplateCode != "" {
 		var t models.Template
-		if err := s.db.Where("tenant_id = ? AND code = ? AND status = ?",
-			task.TenantID, cfg.TemplateCode, models.StatusActive).First(&t).Error; err == nil {
+		// 审核已移除: 不再校验 status, 按 tenant_id + code 查, 查不到即模板缺失。
+		if err := s.db.Where("tenant_id = ? AND code = ?",
+			task.TenantID, cfg.TemplateCode).First(&t).Error; err == nil {
 			template = &t
 		} else {
-			s.db.Model(&task).Updates(map[string]any{"status": BatchFailed, "error": "模板不存在或未审核通过"})
+			s.db.Model(&task).Updates(map[string]any{"status": BatchFailed, "error": "模板不存在"})
 			return
 		}
 		if cfg.Title == "" {
