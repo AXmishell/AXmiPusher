@@ -3,7 +3,7 @@ package handler
 import (
 	"encoding/json"
 
-	"messagepusher/internal/models"
+	"axmipusher/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

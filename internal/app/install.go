@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"messagepusher/internal/config"
-	"messagepusher/internal/models"
-	"messagepusher/internal/pkg/response"
+	"axmipusher/internal/config"
+	"axmipusher/internal/models"
+	"axmipusher/internal/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
@@ -102,7 +102,7 @@ func (a *App) handleEnvCheck(c *gin.Context) {
 	case "sqlite":
 		path := req.SQLitePath
 		if path == "" {
-			path = "./data/messagepusher.db"
+			path = "./data/axmipusher.db"
 		}
 		dir := filepath.Dir(path)
 		checks = append(checks, checkItem{Name: "SQLite 目录", OK: checkWritable(dir), Msg: dir})
@@ -142,14 +142,14 @@ func (a *App) handleInstallInit(c *gin.Context) {
 	// 生成安全随机串: JWT 密钥(admin 路径在 dist 目录确定后解析)。
 	jwtSecret, _ := randomHex(32)
 
-	cfg.App.Name = defaultIfEmpty(req.AppName, "MessagePusher")
+	cfg.App.Name = defaultIfEmpty(req.AppName, "AXmiPusher")
 	cfg.App.BaseURL = req.BaseURL
 	cfg.Auth.JWTSecret = jwtSecret
 	cfg.Database.Type = req.DBType
 	switch req.DBType {
 	case "sqlite":
 		if req.SQLitePath == "" {
-			req.SQLitePath = "./data/messagepusher.db"
+			req.SQLitePath = "./data/axmipusher.db"
 		}
 		cfg.Database.SQLitePath = req.SQLitePath
 	case "postgres":

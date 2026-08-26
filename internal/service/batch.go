@@ -6,7 +6,7 @@ import (
 	"errors"
 	"sync"
 
-	"messagepusher/internal/models"
+	"axmipusher/internal/models"
 
 	"gorm.io/gorm"
 )

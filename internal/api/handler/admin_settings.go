@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"messagepusher/internal/app"
-	"messagepusher/internal/pkg/response"
+	"axmipusher/internal/app"
+	"axmipusher/internal/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )

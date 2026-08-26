@@ -6,7 +6,7 @@ import (
 	"context"
 	"fmt"
 
-	"messagepusher/internal/queue"
+	"axmipusher/internal/queue"
 )
 
 // Sender 渠道发送器接口。

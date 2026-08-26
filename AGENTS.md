@@ -122,10 +122,10 @@ git push github --tags   # 例: git tag v1.0.0 && git push github v1.0.0
 
 # 云端编译部署流(2026-08 起, 取代本地构建产物)
 git push cloud deploy
-ssh mpcloud "sudo bash /opt/messagepusher-src/deploy/cloud-build-deploy.sh"
+ssh mpcloud "sudo bash /opt/axmipusher-src/deploy/cloud-build-deploy.sh"
 
 # 打包可分发安装包(可选, 仍本地打包)
-powershell -File deploy/pack-install.ps1    # 输出 dist-install/messagepusher-install-*.tar.gz
+powershell -File deploy/pack-install.ps1    # 输出 dist-install/axmipusher-install-*.tar.gz
 
 # 本地测试工具
 powershell -File scripts/mock-smtp.ps1    # :2525 → data/smtp.log
@@ -134,13 +134,13 @@ powershell -File scripts/hook-receiver.ps1 # :9090 → data/hook.log
 
 ## NOTES
 - Go 1.25(go.mod) vs Dockerfile golang:1.26 存在版本偏差
-- 两个前端 package.json 的 name 均为 "messagepusher-user"(复制粘贴遗留)
+- 两个前端 package.json 的 name 分别为 "axmipusher-user"(user)/"axmipusher-admin"(admin), 复制粘贴遗留已修正(勿据此判断应用)
 - handler/rand.go 命名误导: 实为共享助手(CurrentUser/randomHex)
 - internal/install/ 为空死目录; migrations/ 空(生产 PG 建议补版本化迁移)
 - 数据库队列重启不丢消息: 在途 SENDING 消息由租约回收(ReapStale)超时复位重试
 - git remote: `cloud`(云 bare repo) + `origin`(Gitee 备份) + `github`(GitHub AXmishell/AXmiPusher, 默认分支 main, push 用 `deploy:main`); ~/.ssh/config 有 `mpcloud` 别名(86.53.111.210:55244, 走 SOCKS5 代理推送)
 - 云部署: Debian12 1C/1G, binary 模式 systemd(api :8080)或单机 compose; PG 用户 mp / Redis 密码见 deploy/server.local.json; 云端编译环境: Go 1.26 + nodejs 18(npm registry 固定 npmmirror)+ 4G swap
-- 云端数据重建流程: 停服 → drop/create messagepusher 库 → 删 install.lock → 启动 → 走安装向导(或 SQL 直插超管 + pgcrypto 哈希)
+- 云端数据重建流程: 停服 → drop/create axmipusher 库 → 删 install.lock → 启动 → 走安装向导(或 SQL 直插超管 + pgcrypto 哈希)
 - 端口规划: 主程序 8080(api, 统一路由 / + /{admin}/ + /api) / 用户中心 19876 / 管理后台 19877(cmd/web)
 - 前端无 lint/test 脚本, 唯一质量门 = `npm run build`(tsc -b + vite build); npm registry 固定 npmmirror; 无 lockfile 提交
 - GitHub 历史提交曾含 config.yaml.bak(旧 JWT 密钥): 已从最新移除, 但历史仍可见 — 公开仓库建议设私有或重写历史

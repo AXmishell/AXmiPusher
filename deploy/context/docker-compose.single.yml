@@ -1,5 +1,5 @@
-# MessagePusher 单机 Docker 编排(单机部署: SQLite + 内置数据库轮询消费者 + Redis)。
-# 部署目录: /opt/messagepusher-docker
+# AXmiPusher 单机 Docker 编排(单机部署: SQLite + 内置数据库轮询消费者 + Redis)。
+# 部署目录: /opt/axmipusher-docker
 #   appdata/  ← 数据目录(由部署脚本从原部署迁移: config.yaml/install.lock/data/)
 #   .env      ← REDIS_PASSWORD / MP_ADMIN_PATH
 services:

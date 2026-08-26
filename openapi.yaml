@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: MessagePusher API
+  title: AXmiPusher API
   description: 消息推送平台 - 核心 API / Server酱兼容层 / 安装向导
   version: 1.0.0
 servers:

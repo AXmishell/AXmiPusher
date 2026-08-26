@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"messagepusher/internal/config"
-	"messagepusher/internal/models"
+	"axmipusher/internal/config"
+	"axmipusher/internal/models"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/driver/postgres"

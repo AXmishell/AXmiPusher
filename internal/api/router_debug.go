@@ -3,9 +3,9 @@
 package api
 
 import (
-	"messagepusher/internal/api/handler"
-	"messagepusher/internal/api/middleware"
-	"messagepusher/internal/app"
+	"axmipusher/internal/api/handler"
+	"axmipusher/internal/api/middleware"
+	"axmipusher/internal/app"
 
 	"github.com/gin-gonic/gin"
 )

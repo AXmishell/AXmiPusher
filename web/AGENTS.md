@@ -6,7 +6,7 @@
   - web/user/: 用户中心
   - web/admin/: 管理后台
 - 两应用无共享代码: api/client.ts 与 api/notice.tsx 是完整重复拷贝, 改一处必须同步另一处
-- 两个 package.json 的 name 都是 "messagepusher-user"(复制粘贴遗留), 勿据此判断应用
+- 两个 package.json 的 name 分别为 "axmipusher-user"(user) / "axmipusher-admin"(admin), 复制粘贴遗留已修正(勿据此判断应用)
 - dev 端口: user=5173, admin=5174; 生产由 Go 后端托管 dist(web.go)
 
 ## 各自 src 结构(两应用对称)

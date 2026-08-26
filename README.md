@@ -25,7 +25,7 @@ Go 后端(单仓库, api 单进程内置数据库轮询消费者)+ 双独立 Rea
 ## 项目结构
 
 ```
-messagepusher/
+AXmiPusher/
 ├── cmd/             # 3 入口: api(HTTP+内置数据库轮询消费者) / web(前端托管双端口) / redis-mock(开发工具)
 ├── internal/        # 后端: app(组合根/安装向导) + api + channel + compat + config + db + models + pkg + queue(数据库轮询) + service + store(业务库存储) + worker
 ├── web/
@@ -56,13 +56,13 @@ go test ./...
 
 ```bash
 git push cloud deploy
-ssh mpcloud "sudo bash /opt/messagepusher-src/deploy/cloud-build-deploy.sh"
+ssh mpcloud "sudo bash /opt/axmipusher-src/deploy/cloud-build-deploy.sh"
 ```
 
 详见 [`deploy/AGENTS.md`](deploy/AGENTS.md)。也可本地打包可分发安装包:
 
 ```bash
-powershell -File deploy/pack-install.ps1    # 输出 dist-install/messagepusher-install-*.tar.gz
+powershell -File deploy/pack-install.ps1    # 输出 dist-install/axmipusher-install-*.tar.gz
 ```
 
 ## 账号体系

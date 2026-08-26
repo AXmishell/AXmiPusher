@@ -4,10 +4,10 @@ import (
 	"strconv"
 	"time"
 
-	"messagepusher/internal/app"
-	"messagepusher/internal/api/middleware"
-	"messagepusher/internal/models"
-	"messagepusher/internal/pkg/response"
+	"axmipusher/internal/app"
+	"axmipusher/internal/api/middleware"
+	"axmipusher/internal/models"
+	"axmipusher/internal/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )

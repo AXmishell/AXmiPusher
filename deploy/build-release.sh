@@ -1,9 +1,9 @@
 #!/bin/bash
-# MessagePusher Release 安装包构建脚本(Linux amd64 单安装包)。
+# AXmiPusher Release 安装包构建脚本(Linux amd64 单安装包)。
 # 用法: bash build-release.sh -v <版本> [-o <输出目录>]
 #   -v 必填, 版本号(去前导 v, 如 -v 1.2.3 或 -v v1.2.3 等价)
 #   -o 可选, 输出目录(默认 dist-install, 相对仓库根)
-# 产物: $OUTDIR/messagepusher-install-$VERSION/ + .tar.gz
+# 产物: $OUTDIR/axmipusher-install-$VERSION/ + .tar.gz
 # 说明: 供 GitHub Actions 推 v* tag 时自动构建发布; 本机亦可用 bash 直接执行。
 set -euo pipefail
 
@@ -27,10 +27,10 @@ while [[ $# -gt 0 ]]; do
 done
 [[ -n "$VERSION" ]] || { echo "[错误] 缺少必填参数 -v <版本>"; echo "用法: bash build-release.sh -v <版本> [-o <输出目录>]"; exit 1; }
 
-echo "=== MessagePusher Release 构建 v$VERSION ==="
+echo "=== AXmiPusher Release 构建 v$VERSION ==="
 echo "输出目录: $OUTDIR"
 
-OUT="$OUTDIR/messagepusher-install-$VERSION"
+OUT="$OUTDIR/axmipusher-install-$VERSION"
 rm -rf "$OUT"
 mkdir -p "$OUT"
 
@@ -62,7 +62,7 @@ cp deploy/context/docker-compose.single.yml "$OUT/"
 echo "=== [5/8] 写入 VERSION 与 README.txt ==="
 printf '%s' "$VERSION" > "$OUT/VERSION"
 cat > "$OUT/README.txt" <<'EOF'
-MessagePusher 安装包
+AXmiPusher 安装包
 ====================
 版本: 见 VERSION 文件
 
@@ -81,10 +81,10 @@ chmod +x "$OUT/api" "$OUT/web/web-linux" "$OUT/install.sh"
 
 # 7) 打包
 echo "=== [7/8] 打包 tar.gz ==="
-tar -czf "$OUTDIR/messagepusher-install-$VERSION.tar.gz" -C "$OUTDIR" "messagepusher-install-$VERSION"
+tar -czf "$OUTDIR/axmipusher-install-$VERSION.tar.gz" -C "$OUTDIR" "axmipusher-install-$VERSION"
 
 # 8) 输出产物
 echo "=== [8/8] 完成 ==="
 echo "产物:"
-du -h "$OUTDIR/messagepusher-install-$VERSION.tar.gz"
+du -h "$OUTDIR/axmipusher-install-$VERSION.tar.gz"
 du -sh "$OUT"

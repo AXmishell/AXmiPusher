@@ -6,9 +6,9 @@ import (
 	"strconv"
 	"time"
 
-	"messagepusher/internal/app"
-	"messagepusher/internal/pkg/response"
-	"messagepusher/internal/service"
+	"axmipusher/internal/app"
+	"axmipusher/internal/pkg/response"
+	"axmipusher/internal/service"
 
 	"github.com/gin-gonic/gin"
 )

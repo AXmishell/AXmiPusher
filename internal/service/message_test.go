@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"messagepusher/internal/channel"
+	"axmipusher/internal/channel"
 )
 
 // TestAutoFailover 验证 auto 渠道熔断降级逻辑。

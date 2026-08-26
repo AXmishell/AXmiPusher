@@ -4,8 +4,8 @@ package middleware
 import (
 	"strings"
 
-	"messagepusher/internal/models"
-	"messagepusher/internal/pkg/response"
+	"axmipusher/internal/models"
+	"axmipusher/internal/pkg/response"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"messagepusher/internal/models"
-	"messagepusher/internal/queue"
+	"axmipusher/internal/models"
+	"axmipusher/internal/queue"
 
 	"gorm.io/gorm"
 )

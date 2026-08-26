@@ -12,8 +12,8 @@ import (
 	"image/png"
 	"time"
 
-	"messagepusher/internal/config"
-	"messagepusher/internal/models"
+	"axmipusher/internal/config"
+	"axmipusher/internal/models"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pquerna/otp"
@@ -201,7 +201,7 @@ func (s *AuthService) CreateToken(user *models.User) (string, error) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.tokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Issuer:    "messagepusher",
+			Issuer:    "axmipusher",
 			Subject:   fmt.Sprintf("%d", user.ID),
 		},
 	}
@@ -320,7 +320,7 @@ func (s *AuthService) CreateAdminToken(admin *models.Admin) (string, error) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.tokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Issuer:    "messagepusher",
+			Issuer:    "axmipusher",
 			Subject:   fmt.Sprintf("%d", admin.ID),
 		},
 	}
@@ -526,7 +526,7 @@ func (s *AuthService) CreateTotpPendingToken(id uint64, isAdmin bool) (string, e
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(totpPendingTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			Issuer:    "messagepusher",
+			Issuer:    "axmipusher",
 			Subject:   fmt.Sprintf("%d", id),
 		},
 	}

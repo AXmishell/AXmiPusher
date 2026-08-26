@@ -1,13 +1,13 @@
 #!/bin/bash
-# MessagePusher 一键安装脚本。
-# 用法: sudo bash install.sh [--mode docker|binary] [--port 8080] [--dir /opt/messagepusher]
+# AXmiPusher 一键安装脚本。
+# 用法: sudo bash install.sh [--mode docker|binary] [--port 8080] [--dir /opt/axmipusher]
 # 说明: 解压安装包后在本目录运行; 完成后浏览器访问 http://<IP>:<端口>/install 走 Web 安装向导。
 set -e
 
 # ---- 参数解析 ----
 MODE="auto"       # auto | docker | binary
 PORT="8080"
-INSTALL_DIR="/opt/messagepusher"
+INSTALL_DIR="/opt/axmipusher"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --mode) MODE="$2"; shift 2 ;;
@@ -20,7 +20,7 @@ done
 SRC_DIR="$(cd "$(dirname "$0")" && pwd)"
 VERSION="$(cat "$SRC_DIR/VERSION" 2>/dev/null || echo "dev")"
 
-echo "=== MessagePusher 安装脚本 v$VERSION ==="
+echo "=== AXmiPusher 安装脚本 v$VERSION ==="
 echo "源目录: $SRC_DIR"
 echo "安装目录: $INSTALL_DIR"
 echo "端口: $PORT"
@@ -51,9 +51,9 @@ chmod +x "$INSTALL_DIR/api"
 
 install_binary() {
   echo "[binary] 生成 systemd 服务..."
-  cat > /etc/systemd/system/messagepusher.service <<EOF
+  cat > /etc/systemd/system/axmipusher.service <<EOF
 [Unit]
-Description=MessagePusher API
+Description=AXmiPusher API
 After=network.target
 
 [Service]
@@ -70,23 +70,23 @@ Environment=MP_ADMIN_DIST=$INSTALL_DIR/web/admin
 WantedBy=multi-user.target
 EOF
   systemctl daemon-reload
-  systemctl enable messagepusher >/dev/null 2>&1 || true
-  systemctl restart messagepusher
+  systemctl enable axmipusher >/dev/null 2>&1 || true
+  systemctl restart axmipusher
   sleep 2
-  if ! systemctl is-active --quiet messagepusher; then
-    echo "[错误] 服务启动失败, 查看日志: journalctl -u messagepusher -n 50"
+  if ! systemctl is-active --quiet axmipusher; then
+    echo "[错误] 服务启动失败, 查看日志: journalctl -u axmipusher -n 50"
     exit 1
   fi
-  echo "[binary] API 服务已启动 (systemd: messagepusher, :$PORT)"
+  echo "[binary] API 服务已启动 (systemd: axmipusher, :$PORT)"
 
   # 可选: 前端独立端口托管程序(用户中心/管理后台/API 反代)。
   # 说明: web 是目录, 二进制位于其内部的 web-linux(由 build-release.sh 按此布局打包)。
   if [[ -x "$INSTALL_DIR/web/web-linux" ]]; then
     chmod +x "$INSTALL_DIR/web/web-linux"
-    cat > /etc/systemd/system/messagepusher-web.service <<EOF
+    cat > /etc/systemd/system/axmipusher-web.service <<EOF
 [Unit]
-Description=MessagePusher Web Frontend
-After=network.target messagepusher.service
+Description=AXmiPusher Web Frontend
+After=network.target axmipusher.service
 
 [Service]
 Type=simple
@@ -104,9 +104,9 @@ Environment=MP_ADMIN_DIST=$INSTALL_DIR/web/admin
 WantedBy=multi-user.target
 EOF
     systemctl daemon-reload
-    systemctl enable messagepusher-web >/dev/null 2>&1 || true
-    systemctl restart messagepusher-web
-    echo "[binary] 前端托管已启动 (systemd: messagepusher-web, 用户中心 :19876 / 管理后台 :19877)"
+    systemctl enable axmipusher-web >/dev/null 2>&1 || true
+    systemctl restart axmipusher-web
+    echo "[binary] 前端托管已启动 (systemd: axmipusher-web, 用户中心 :19876 / 管理后台 :19877)"
   fi
 }
 
@@ -140,7 +140,7 @@ esac
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 echo ""
 echo "=============================================="
-echo " MessagePusher 安装就绪!"
+echo " AXmiPusher 安装就绪!"
 echo ""
 echo " 浏览器打开: http://${IP:-<服务器IP>}:$PORT/install"
 echo " 按向导完成配置 → 创建管理员"
@@ -148,6 +148,6 @@ echo ""
 echo " 安装后入口:"
 echo "   用户中心   http://${IP:-<服务器IP>}:$PORT/"
 echo "   管理后台   http://${IP:-<服务器IP>}:$PORT/<admin随机路径>/"
-echo " 卸载:       systemctl disable --now messagepusher  (binary 模式)"
+echo " 卸载:       systemctl disable --now axmipusher  (binary 模式)"
 echo "             docker compose -f $INSTALL_DIR/docker-compose.single.yml down  (docker 模式)"
 echo "=============================================="

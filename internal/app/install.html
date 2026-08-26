@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>安装 - MessagePusher</title>
+<title>安装 - AXmiPusher</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -63,7 +63,7 @@
 <body>
 <div class="card">
   <div class="header">
-    <h1>MessagePusher 安装向导</h1>
+    <h1>AXmiPusher 安装向导</h1>
     <p>消息推送平台 - 只需几步即可完成初始化</p>
   </div>
   <div class="body">
@@ -77,7 +77,7 @@
 
     <!-- Step 0: 欢迎 -->
     <div class="step" id="step0">
-      <div class="title">欢迎使用 MessagePusher</div>
+      <div class="title">欢迎使用 AXmiPusher</div>
       <div class="tip" style="font-size:14px; color:#475569; line-height:1.8;">
         本向导将引导您完成：<br>
         1. 检查运行环境<br>
@@ -104,7 +104,7 @@
       <div class="title">基础配置</div>
       <div class="field">
         <label>平台名称</label>
-        <input id="appName" value="MessagePusher">
+        <input id="appName" value="AXmiPusher">
       </div>
       <div class="field">
         <label>访问地址 (Base URL)</label>
@@ -119,14 +119,14 @@
       </div>
       <div class="field hidden" id="sqliteField">
         <label>SQLite 文件路径</label>
-        <input id="sqlitePath" value="./data/messagepusher.db">
+        <input id="sqlitePath" value="./data/axmipusher.db">
       </div>
       <div class="hidden" id="pgFields">
         <div class="row">
           <div class="field"><label>主机</label><input id="pgHost" value="127.0.0.1"></div>
           <div class="field"><label>端口</label><input id="pgPort" value="5432" type="number"></div>
         </div>
-        <div class="field"><label>数据库名</label><input id="pgName" placeholder="messagepusher"></div>
+        <div class="field"><label>数据库名</label><input id="pgName" placeholder="axmipusher"></div>
         <div class="row">
           <div class="field"><label>用户</label><input id="pgUser" value="postgres"></div>
           <div class="field"><label>密码</label><input id="pgPassword" type="password"></div>

@@ -11,9 +11,9 @@ import (
 	"syscall"
 	"time"
 
-	"messagepusher/internal/api"
-	"messagepusher/internal/app"
-	"messagepusher/internal/config"
+	"axmipusher/internal/api"
+	"axmipusher/internal/app"
+	"axmipusher/internal/config"
 )
 
 func main() {
@@ -50,7 +50,7 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("MessagePusher API 已启动: http://%s", addr)
+		log.Printf("AXmiPusher API 已启动: http://%s", addr)
 		if cfg.Admin.RandomPath != "" {
 			log.Printf("管理员后台路径: /%s/", cfg.Admin.RandomPath)
 		}

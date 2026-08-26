@@ -1,10 +1,10 @@
 #!/bin/bash
 # 云端部署脚本: 从 git clone 的源码组装部署产物并重建容器。
-# 用法: sudo bash /opt/messagepusher-src/deploy/cloud-deploy.sh
+# 用法: sudo bash /opt/axmipusher-src/deploy/cloud-deploy.sh
 set -e
 
-STACK=/opt/messagepusher-docker
-SRC=/opt/messagepusher-src
+STACK=/opt/axmipusher-docker
+SRC=/opt/axmipusher-src
 
 echo "[1/4] 拉取最新代码..."
 cd "$SRC"

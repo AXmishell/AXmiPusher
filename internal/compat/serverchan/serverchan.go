@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"messagepusher/internal/app"
-	"messagepusher/internal/models"
-	"messagepusher/internal/service"
+	"axmipusher/internal/app"
+	"axmipusher/internal/models"
+	"axmipusher/internal/service"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"

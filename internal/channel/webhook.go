@@ -12,8 +12,8 @@ import (
 	"net/http"
 	"time"
 
-	"messagepusher/internal/models"
-	"messagepusher/internal/queue"
+	"axmipusher/internal/models"
+	"axmipusher/internal/queue"
 
 	"gorm.io/gorm"
 )
@@ -91,7 +91,7 @@ func (s *WebhookSender) post(ctx context.Context, sub models.WebhookSubscription
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "MessagePusher/1.0")
+	req.Header.Set("User-Agent", "AXmiPusher/1.0")
 	if sub.Secret != "" {
 		mac := hmac.New(sha256.New, []byte(sub.Secret))
 		mac.Write(body)

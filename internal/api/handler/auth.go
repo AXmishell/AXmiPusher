@@ -4,11 +4,11 @@ package handler
 import (
 	"errors"
 
-	"messagepusher/internal/app"
-	"messagepusher/internal/api/middleware"
-	"messagepusher/internal/models"
-	"messagepusher/internal/pkg/response"
-	"messagepusher/internal/service"
+	"axmipusher/internal/app"
+	"axmipusher/internal/api/middleware"
+	"axmipusher/internal/models"
+	"axmipusher/internal/pkg/response"
+	"axmipusher/internal/service"
 
 	"github.com/gin-gonic/gin"
 )

@@ -1,4 +1,4 @@
-﻿# 打包 MessagePusher 可分发安装包。
+﻿# 打包 AXmiPusher 可分发安装包。
 # 用法: powershell -File deploy/pack-install.ps1 [-AdminPath b322aa9602150d0c] [-OutDir dist-install]
 param(
     [string]$AdminPath = "b322aa9602150d0c",
@@ -25,7 +25,7 @@ Remove-Item Env:CGO_ENABLED, Env:GOOS, Env:GOARCH
 Pop-Location
 
 Write-Host "[2/4] 组装安装包目录..."
-$pkgDir = Join-Path $root (Join-Path $OutDir "messagepusher-install-$version")
+$pkgDir = Join-Path $root (Join-Path $OutDir "axmipusher-install-$version")
 if (Test-Path $pkgDir) { Remove-Item $pkgDir -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $pkgDir | Out-Null
 
@@ -39,7 +39,7 @@ Set-Content (Join-Path $pkgDir "VERSION") $version -Encoding ASCII
 
 # 安装说明
 $readme = @"
-MessagePusher 安装包 v$version
+AXmiPusher 安装包 v$version
 ============================
 
 1. 上传本目录到服务器(任意路径)
@@ -57,10 +57,10 @@ Set-Content (Join-Path $pkgDir "README.txt") $readme -Encoding UTF8
 
 Write-Host "[3/4] 打包 tar.gz..."
 Push-Location (Join-Path $root $OutDir)
-tar -czf "messagepusher-install-$version.tar.gz" "messagepusher-install-$version"
+tar -czf "axmipusher-install-$version.tar.gz" "axmipusher-install-$version"
 Pop-Location
 
 Write-Host "[4/4] 完成:"
-$tarball = Join-Path $root (Join-Path $OutDir "messagepusher-install-$version.tar.gz")
+$tarball = Join-Path $root (Join-Path $OutDir "axmipusher-install-$version.tar.gz")
 Write-Host "  安装包: $tarball ($([math]::Round((Get-Item $tarball).Length/1MB,1)) MB)"
-Write-Host "  测试:   sudo tar -xzf $tarball -C /opt && sudo bash /opt/messagepusher-install-$version/install.sh"
+Write-Host "  测试:   sudo tar -xzf $tarball -C /opt && sudo bash /opt/axmipusher-install-$version/install.sh"

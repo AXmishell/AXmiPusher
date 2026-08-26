@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
-	"messagepusher/internal/app"
-	"messagepusher/internal/models"
-	"messagepusher/internal/pkg/response"
+	"axmipusher/internal/app"
+	"axmipusher/internal/models"
+	"axmipusher/internal/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )

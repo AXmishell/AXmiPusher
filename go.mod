@@ -1,4 +1,4 @@
-module messagepusher
+module axmipusher
 
 go 1.25.0
 

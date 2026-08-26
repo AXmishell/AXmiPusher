@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"messagepusher/internal/store"
+	"axmipusher/internal/store"
 
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"

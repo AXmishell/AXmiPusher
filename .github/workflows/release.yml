@@ -32,5 +32,5 @@ jobs:
       - name: 发布到 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist-install/messagepusher-install-*.tar.gz
+          files: dist-install/axmipusher-install-*.tar.gz
           generate_release_notes: true

@@ -1,4 +1,4 @@
-# MessagePusher 测试流程
+# AXmiPusher 测试流程
 
 > 目标: 从**空数据库**开始, 走完整安装向导, 逐页测试前端全部按钮/交互。
 > 环境: 默认云端生产 `http://mp.gpcn.cc:8080`(本地可用 `http://localhost:8080` 替换)。
@@ -21,8 +21,8 @@
 ### 1.1 清空 PostgreSQL
 
 ```bash
-ssh mpcloud "sudo -u postgres psql -c 'DROP DATABASE IF EXISTS messagepusher;' \
-  && sudo -u postgres psql -c 'CREATE DATABASE messagepusher OWNER mp;'"
+ssh mpcloud "sudo -u postgres psql -c 'DROP DATABASE IF EXISTS axmipusher;' \
+  && sudo -u postgres psql -c 'CREATE DATABASE axmipusher OWNER mp;'"
 ```
 
 ### 1.2 清空 Redis
@@ -34,7 +34,7 @@ ssh mpcloud "redis-cli -a '<密码>' --no-auth-warning FLUSHALL"
 ### 1.3 清空本机 SQLite 测试库(如用本地测试)
 
 ```powershell
-Remove-Item data\messagepusher.db* -Force
+Remove-Item data\axmipusher.db* -Force
 ```
 
 ### 1.4 移除安装锁与配置(重置为未安装态)
@@ -132,7 +132,7 @@ go run ./cmd/api          # :8080
 
 | 日期 | 用例 | 结果(✅/❌) | 问题/备注 |
 |---|---|---|---|
-| 2026-08-26 | 云端环境搭建(86.53.111.210:55244) | ✅ | 全新 Debian12 空机: 安装 git/go1.26/pg15/redis7; 建 bare repo /opt/messagepusher-git.git; 本地构建产物推送 deploy 分支; binary 模式 systemd 部署 |
+| 2026-08-26 | 云端环境搭建(86.53.111.210:55244) | ✅ | 全新 Debian12 空机: 安装 git/go1.26/pg15/redis7; 建 bare repo /opt/axmipusher-git.git; 本地构建产物推送 deploy 分支; binary 模式 systemd 部署 |
 | 2026-08-26 | 阶段一: 清空 PG/Redis/安装锁 | ✅ | `installed:false`; 业务 API 503 门控正常 |
 | 2026-08-26 | 阶段二: 安装向导(env-check→init→admin→complete) | ✅ | PG 连接✓; admin_path 与构建 base 一致(修复后); 端口固化 8080/19876/19877; 管理后台路径可访问 |
 | 2026-08-26 | 3.0 通用: 注册/登录(错密拒绝)/改密(错旧密拒绝)/退出 | ✅ | 注册自动登录跳概览; 改密后旧密码 40100, 新密码登录成功 |
@@ -169,9 +169,9 @@ go run ./cmd/api          # :8080
 curl http://<域名>:8080/api/v1/health
 
 # 云端部署最新代码
-git push origin deploy && ssh mpcloud "sudo bash /opt/messagepusher-src/deploy/cloud-deploy.sh"
+git push origin deploy && ssh mpcloud "sudo bash /opt/axmipusher-src/deploy/cloud-deploy.sh"
 
 # 查看服务日志
-ssh mpcloud "journalctl -u messagepusher -n 50 --no-pager"   # binary 模式
-ssh mpcloud "docker compose -f /opt/messagepusher-docker/docker-compose.single.yml logs -f"   # compose 模式
+ssh mpcloud "journalctl -u axmipusher -n 50 --no-pager"   # binary 模式
+ssh mpcloud "docker compose -f /opt/axmipusher-docker/docker-compose.single.yml logs -f"   # compose 模式
 ```

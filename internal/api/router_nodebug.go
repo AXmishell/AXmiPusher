@@ -3,7 +3,7 @@
 package api
 
 import (
-	"messagepusher/internal/app"
+	"axmipusher/internal/app"
 
 	"github.com/gin-gonic/gin"
 )

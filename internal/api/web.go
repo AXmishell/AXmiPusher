@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"messagepusher/internal/app"
+	"axmipusher/internal/app"
 
 	"github.com/gin-gonic/gin"
 )

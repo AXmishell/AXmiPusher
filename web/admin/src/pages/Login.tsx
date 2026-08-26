@@ -84,7 +84,7 @@ export default function Login() {
             </Typography.Text>
           </Form>
         ) : (
-          <Form layout="vertical" onFinish={onFinish} initialValues={{ email: 'admin@messagepusher.local', password: 'admin123456' }}>
+          <Form layout="vertical" onFinish={onFinish} initialValues={{ email: 'admin@axmipusher.local', password: 'admin123456' }}>
             <Form.Item name="email" label="管理员邮箱" rules={[{ required: true, message: '请输入邮箱' }]}>
               <Input placeholder="admin@example.com" size="large" />
             </Form.Item>

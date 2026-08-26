@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"messagepusher/internal/store"
+	"axmipusher/internal/store"
 )
 
 // DBQueue 数据库轮询队列。

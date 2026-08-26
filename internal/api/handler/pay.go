@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"messagepusher/internal/app"
-	"messagepusher/internal/models"
-	"messagepusher/internal/pkg/response"
-	"messagepusher/internal/service"
+	"axmipusher/internal/app"
+	"axmipusher/internal/models"
+	"axmipusher/internal/pkg/response"
+	"axmipusher/internal/service"
 
 	"github.com/gin-gonic/gin"
 )

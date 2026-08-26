@@ -1,4 +1,4 @@
-﻿# MessagePusher 单机 Docker 一键部署脚本。
+﻿# AXmiPusher 单机 Docker 一键部署脚本。
 # 流程: 构建产物(Go 交叉编译 + 双前端) → 组装部署目录 → 上传服务器 → compose up。
 # 前置: 服务器已装 Docker + Compose 插件; deploy/server.local.json 已配置。
 param(
@@ -11,7 +11,7 @@ $cfg = Get-Content (Join-Path $PSScriptRoot "server.local.json") -Raw | ConvertF
 $keyPath = Join-Path $root $cfg.key
 $target = "$($cfg.user)@$($cfg.host)"
 $ctxDir = Join-Path $PSScriptRoot "context"
-$remoteDir = "/opt/messagepusher-docker"
+$remoteDir = "/opt/axmipusher-docker"
 
 Write-Host "[1/6] 构建 Linux 二进制..."
 Push-Location $root
@@ -58,12 +58,12 @@ cd $remoteDir
 # 迁移既有数据(首次部署时): 保留已安装状态(用户/消息/admin 路径)
 if [ ! -d appdata/data ]; then
     sudo mkdir -p appdata/data
-    sudo cp /opt/messagepusher/config.yaml appdata/ 2>/dev/null || true
-    sudo cp /opt/messagepusher/install.lock appdata/ 2>/dev/null || true
-    sudo cp -r /opt/messagepusher/data/. appdata/data/ 2>/dev/null || true
+    sudo cp /opt/axmipusher/config.yaml appdata/ 2>/dev/null || true
+    sudo cp /opt/axmipusher/install.lock appdata/ 2>/dev/null || true
+    sudo cp -r /opt/axmipusher/data/. appdata/data/ 2>/dev/null || true
     echo "数据已迁移到 appdata/"
 fi
-sudo systemctl stop messagepusher 2>/dev/null; sudo systemctl disable messagepusher 2>/dev/null
+sudo systemctl stop axmipusher 2>/dev/null; sudo systemctl disable axmipusher 2>/dev/null
 sudo systemctl stop redis-server 2>/dev/null; sudo systemctl disable redis-server 2>/dev/null
 sudo docker compose -f docker-compose.single.yml up -d --build
 sleep 8

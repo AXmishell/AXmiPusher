@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"time"
 
-	"messagepusher/internal/channel"
-	"messagepusher/internal/models"
-	"messagepusher/internal/queue"
-	"messagepusher/internal/store"
+	"axmipusher/internal/channel"
+	"axmipusher/internal/models"
+	"axmipusher/internal/queue"
+	"axmipusher/internal/store"
 )
 
 const (

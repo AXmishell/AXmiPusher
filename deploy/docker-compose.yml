@@ -1,4 +1,4 @@
-# MessagePusher 单机部署(物理机 Docker Compose)。
+# AXmiPusher 单机部署(物理机 Docker Compose)。
 # 统一数据库驱动: PostgreSQL + Redis, 消息队列为数据库轮询(内置消费者)。
 
 services:
@@ -8,7 +8,7 @@ services:
     environment:
       POSTGRES_USER: mp
       POSTGRES_PASSWORD: ${MP_DB_PASSWORD:-mp_secret_2026}
-      POSTGRES_DB: messagepusher
+      POSTGRES_DB: axmipusher
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -37,7 +37,7 @@ services:
       MP_DB_PORT: "5432"
       MP_DB_USER: mp
       MP_DB_PASSWORD: ${MP_DB_PASSWORD:-mp_secret_2026}
-      MP_DB_NAME: messagepusher
+      MP_DB_NAME: axmipusher
       MP_REDIS_ADDR: redis:6379
       MP_REDIS_FALLBACK: "true"
       MP_JWT_SECRET: ${MP_JWT_SECRET:?请在 .env 中设置 MP_JWT_SECRET}

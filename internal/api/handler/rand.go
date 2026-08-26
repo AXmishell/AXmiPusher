@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"messagepusher/internal/api/middleware"
-	"messagepusher/internal/models"
+	"axmipusher/internal/api/middleware"
+	"axmipusher/internal/models"
 
 	"github.com/gin-gonic/gin"
 )

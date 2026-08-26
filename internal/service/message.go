@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"messagepusher/internal/models"
-	"messagepusher/internal/queue"
-	"messagepusher/internal/store"
+	"axmipusher/internal/models"
+	"axmipusher/internal/queue"
+	"axmipusher/internal/store"
 
 	"gorm.io/gorm"
 )

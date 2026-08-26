@@ -5,12 +5,12 @@ import (
 	"context"
 	"time"
 
-	"messagepusher/internal/api/handler"
-	"messagepusher/internal/api/middleware"
-	"messagepusher/internal/app"
-	"messagepusher/internal/compat/serverchan"
-	"messagepusher/internal/models"
-	"messagepusher/internal/pkg/response"
+	"axmipusher/internal/api/handler"
+	"axmipusher/internal/api/middleware"
+	"axmipusher/internal/app"
+	"axmipusher/internal/compat/serverchan"
+	"axmipusher/internal/models"
+	"axmipusher/internal/pkg/response"
 
 	"github.com/gin-gonic/gin"
 )

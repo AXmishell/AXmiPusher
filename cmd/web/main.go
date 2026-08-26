@@ -25,7 +25,7 @@ import (
 	"strconv"
 	"strings"
 
-	"messagepusher/internal/config"
+	"axmipusher/internal/config"
 )
 
 func main() {

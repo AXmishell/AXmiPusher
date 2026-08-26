@@ -200,13 +200,13 @@ func lockDir() string {
 func defaultConfig() *Config {
 	return &Config{
 		App: AppConfig{
-			Name:    "messagepusher",
+			Name:    "axmipusher",
 			DataDir: "./data",
 		},
 		Server: ServerConfig{Host: "0.0.0.0", Port: 8080},
 		Database: DatabaseConfig{
 			Type:       "sqlite",
-			SQLitePath: "./data/messagepusher.db",
+			SQLitePath: "./data/axmipusher.db",
 			SSLMode:    "disable",
 		},
 		Queue: QueueConfig{
