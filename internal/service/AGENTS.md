@@ -18,11 +18,16 @@
 ## 关键逻辑
 
 ### 注册与管理员(AuthService)
-- `Register(email, password, name, nickname)`: **不建租户**(2026-08 折叠), 直接建 User{Name: 空则 email, Role: tenant_admin}; 邮箱查重 ErrEmailExists。
+- `Register(email, password, nickname)`: **不建租户**(2026-08 折叠), 直接建 User{Nickname: 空则 email(名称/昵称已合并为用户名), Role: tenant_admin}; 邮箱查重 ErrEmailExists; handler 层校验 confirm_password 一致(不一致 400)。
 - 管理员方法: `AdminLogin/CreateAdminToken/ParseAdminToken`(JWT kind=admin, 查 admins 表); `AdminChangePassword`; `ListAdmins/CreateAdmin/SetAdminStatus/ResetAdminPassword`(后两者仅超管路由调用)。
 - `SetAdminStatus` 保护: 不能禁用自己、不能禁用最后一位有效管理员。
 - 用户/管理员 JWT 双向隔离: `ParseToken` 只认 kind=user, `ParseAdminToken` 只认 kind=admin。
 - 业务表 `tenant_id` 值 = 归属用户 ID(租户折叠后语义, 参数名保留)。
+
+### TOTP 两步验证(AuthService, 双端对称)
+- 登录两阶段: 密码通过且 `TotpEnabled` → 不更新 last_login, 返回 `need_totp` + `CreateTotpPendingToken`(5 分钟 JWT, kind=totp_pending, Role 标 user/admin) → `UserLoginTotp/AdminLoginTotp` 校验 `totp.Validate(code, secret)` 通过后记录登录态并签发正式 token。
+- 绑定流: `SetupTotp`(pquerna/otp 生成 secret 存库未启用 + 返回 otpauth URL/二维码 PNG data URL)→ `ConfirmTotp`(验证码确认启用)→ `DisableTotp`(当前验证码关闭)。
+- `totp_secret` 存库 `json:"-"` 不回传; 未启用时存储值即待确认密钥; 已启用时 Setup 拒绝。
 
 ### 幂等(MessageService.Send)
 - 同用户 + 同 request_id 只受理一次: DB 唯一索引兜底 + Redis 缓存加速(快路径命中直接返回原 message_id, TTL 86400)。

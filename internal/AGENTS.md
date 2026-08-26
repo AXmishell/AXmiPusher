@@ -28,11 +28,11 @@
 | app | 组合根: 装配配置/DB/存储/队列/服务/渠道 | 上帝对象, 全包依赖它; 含安装向导路由; Reinit 不得重建同类型队列 |
 | api | 路由装配 + 中间件 + HTTP 处理器(handler/) | 业务 API 需 RequireInstalled; 处理器只做薄层, 逻辑在 service |
 | channel | 渠道适配层: Sender 接口 + Registry 分发 + 熔断 | 新渠道实现 Sender 并在 app.Build 注册; Dispatch 前必须 SetBreaker |
-| compat | 兼容层: Server酱 v1/v2 接口 | 公开路由, 走兼容 key 鉴权 |
+| compat | 兼容层: Server酱 v1/v2 接口 | 公开路由, 走兼容 key 鉴权(非死目录) |
 | config | 配置加载与持久化 | MP_* 环境变量 > config.yaml > 默认值; Save 由安装程序调用 |
-| db | GORM 初始化 + AutoMigrate | 生产 PG / 本地 SQLite; SQLite 单写连接; migrations/ 为空 |
-| models | 全部业务数据模型 | GORM 标签; 消息状态机见 store.Message; **无 Tenant 模型**(2026-08 已折叠入 User) |
-| pkg | 通用小工具 | 仅 pkg/response: 统一 API 响应格式 |
+| db | GORM 初始化 + AutoMigrate | 生产 PG / 本地 SQLite; SQLite 单写连接; migrateLegacySchema 清理旧库遗留列 |
+| models | 全部业务数据模型 | GORM 标签; 消息状态机见 store.Message; 无 Tenant 模型(2026-08 折叠入 User); User 无 name(合并为 nickname) |
+| pkg | 通用小工具 | 仅 pkg/response: 统一 API 响应格式(非死目录) |
 | queue | 队列抽象 + 双实现 | inprocess/Kafka; Subscribe 阻塞; 消费逻辑在 worker |
 | service | 业务逻辑层 | 后台任务必须用独立 ctx; 模板有待审核版本禁止修改 |
 | store | 消息记录存储抽象 + 双实现 | SQLite/ClickHouse; 状态机 PENDING→SENDING→SUCCESS/FAILED/RETRYING/DEAD |

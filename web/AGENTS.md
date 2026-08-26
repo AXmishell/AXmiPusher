@@ -20,9 +20,9 @@
 
 ## 页面清单
 
-- user 12 页: Dashboard / SendMessage / Messages / ApiKeys / CompatKeys / Callbacks / Plans / Channels / Inbox / BatchTasks / Login / Register
-- admin 9 页: Users / Admins(管理员管理, 仅超管可见) / Reviews / Plans / Payments / AuditLogs / Settings / Dashboard / Login
-- 2026-08 租户概念已移除: 无"租户管理"页; 用户中心注册的 `tenant_name` 字段保留(语义=名称, 可选, 默认邮箱), 展示处读 `user.name`
+- user 13 页: Dashboard / SendMessage / Messages / ApiKeys / CompatKeys / Callbacks / Plans / Channels / Inbox / BatchTasks / Profile(账户设置) / Login / Register
+- admin 10 页: Users / Admins(管理员管理, 仅超管可见) / Reviews / Plans / Payments / AuditLogs / Settings(系统设置) / Account(账户设置) / Dashboard / Login
+- 2026-08 名称/昵称已合并为用户名: User 只保留 nickname(注册时默认 email), 无 name/tenant_name; 账户设置页 Profile(用户中心)/Account(管理后台)展示账号 ID/用户名/邮箱/注册时间/最近登录 IP, 支持改用户名/QQ/邮箱/密码/TOTP
 
 ## 关键差异(admin vs user)
 
@@ -30,7 +30,8 @@
 - user: 无 base, 直接挂在根路径
 - admin 构建用**相对 base('./')**(vite.config.ts: `MP_ADMIN_BASE || './'`), 资源与路由均相对当前前缀; 安装向导从 dist index.html 解析 base 兜底; 旧约定"MP_ADMIN_BASE=/<随机串>/ 且必须与 MP_ADMIN_PATH 一致"已废弃
 - token key: user 用 localStorage `mp_token`, admin 用 `mp_admin_token`
-- 401 跳登录: user 跳 `/login`(判断 startsWith), admin 跳动态当前前缀 + `/login`(判断 endsWith)
+- 401 跳登录: user 跳 `/login`(判断 startsWith), admin 跳动态当前前缀 + `/login`(判断 endsWith); admin basename 用 path.ts 的 `resolveAdminBasename`(排除 login/users 等 SPA 路由段, 防 dev 模式误判前缀)
+- **TOTP 两步验证**: 两端登录页均两阶段(密码 → `need_totp` → 验证码输入 → `/login/totp`); 账户设置页 TOTP 卡片(后端返回二维码 data URL 直显, 绑定/关闭均需验证码); 注册页有确认密码输入(提交含 confirm_password)
 
 ## API 调用约定
 

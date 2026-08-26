@@ -18,10 +18,10 @@ HTTP 层。Gin 引擎装配、路由、中间件、handler。依赖注入中心 
 
 | 子组 | 鉴权 | 说明 |
 |---|---|---|
-| `/auth` | register/login 公开; `/me` 需用户 JWT | |
+| `/auth` | register/login/login-totp 公开; `/me` 及资料/邮箱/totp 需用户 JWT | 注册校验 confirm_password |
 | `/api-keys` `/compat-keys` `/callbacks` `/stats` `/templates` `/pay` `/channels` `/batch-tasks` `/inbox` | RequireAuth | 用户登录态 |
 | `/messages` | RequireAuthOrAPIKey | 网页与服务端通用 |
-| `/admin/auth` | login 公开; `/me` `/change-password` 需管理员 JWT | 独立管理员体系(admins 表) |
+| `/admin/auth` | login/login-totp 公开; `/me` `/profile` `/email` `/change-password` `/totp/*` 需管理员 JWT | 独立管理员体系(admins 表) |
 | `/admin/*`(stats/users/reviews/plans/payments/audit-logs/settings...) | RequireAdminAuth | 管理员登录态, **无平台角色门禁**(已由管理员体系取代) |
 | `/admin/admins` | RequireAdminAuth + RequireAdminRole(super_admin) | 管理员管理(仅超管) |
 
@@ -47,6 +47,12 @@ HTTP 层。Gin 引擎装配、路由、中间件、handler。依赖注入中心 
 - `RequireInstalled()`: 未安装拒绝业务 API
 - 关键: `getAuth`/`getAdminAuth` 是惰性闭包, 容器重建后取最新 AuthService, 勿改成启动时快照
 - 上下文键: `CtxUser/CtxTenant(uint64)/CtxAPIKey/CtxAdmin`; 辅助函数 `CurrentUser/CurrentAdmin/CurrentTenantID` 在本包
+
+## TOTP 登录(handler/auth.go + admin_auth.go)
+
+- 第一步 login 返回 `need_totp`+`totp_token`(5 分钟临时凭证); 第二步 `login/totp` 校验验证码后签发正式 token
+- totp 三接口(登录态): `setup`(返回 secret/otpauth_url/qr_data_url) → `confirm`(验证码启用) → `disable`(验证码关闭)
+- 注册 `confirm_password` 非空时须与 password 一致, 否则 400
 
 ## 静态托管(web.go)
 

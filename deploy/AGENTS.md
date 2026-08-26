@@ -56,6 +56,9 @@ deploy/
 git push cloud deploy
 ssh mpcloud "sudo bash /opt/messagepusher-src/deploy/cloud-build-deploy.sh"
 
+# GitHub 备份/CI(.github/workflows/ci.yml, push main/deploy 自动编译检查)
+git push github deploy:main
+
 # 打包可分发安装包(可选)
 powershell -File deploy/build-artifacts.ps1 -AdminPath b322aa9602150d0c
 powershell -File deploy/pack-install.ps1
@@ -67,5 +70,6 @@ powershell -File deploy/pack-install.ps1
 ## NOTES
 - 云端编译需 4G swap(已建 /swapfile, 开机自挂); 960Mi 物理内存下 node/tsc 必须 NODE_OPTIONS=--max-old-space-size=2048, 否则 V8 OOM Abort — 已踩坑
 - 云端 apt redis(127.0.0.1:6379, requirepass)与 compose 内置 redis 并存, 端口不冲突
-- context.tar.gz 是打包缓存, 不入库; deploy/context/.env 由 .gitignore 忽略
+- context.tar.gz 是打包缓存, 不入库; deploy/context/.env 由 .gitignore 忽略; context/api 二进制已移出跟踪(54MB 超 GitHub 限制)
 - 云端重建数据库后必须 `CREATE EXTENSION IF NOT EXISTS pgcrypto`(否则重置管理员密码报 gen_salt 不存在)
+- git remote: `cloud`(云 bare repo, 部署主通道) + `github`(GitHub AXmishell/AXmiPusher, main 分支, 备份+CI); 敏感文件(config.yaml.bak 等)绝不推 GitHub — 已踩坑

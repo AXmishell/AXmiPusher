@@ -50,3 +50,4 @@
 - admin path 必须与构建 base 一致(DetectAdminBase 兜底, 否则管理后台 404)
 - 轮换路径后必须 RegisterAdminSPA 新前缀(仅改 config 不够, 路由树不自动更新)
 - 安装向导用 `randomHex(32)` 生成 JWT 密钥, 勿硬编码/复用
+- 旧库启动清理(migrateLegacySchema, db 包): users 表残留 tenant_id/name 列会致新代码插入 NOT NULL 失败, 启动自动 DROP(SQLite 先删索引); 已踩坑
