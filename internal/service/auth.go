@@ -97,8 +97,8 @@ func (s *AuthService) Register(email, password, tenantName, nickname string) (*m
 	return &user, nil
 }
 
-// Login 登录。
-func (s *AuthService) Login(email, password string) (*models.User, error) {
+// Login 登录(记录最近一次登录 IP)。
+func (s *AuthService) Login(email, password, ip string) (*models.User, error) {
 	var user models.User
 	if err := s.db.Where("email = ?", email).First(&user).Error; err != nil {
 		return nil, ErrBadCredential
@@ -110,7 +110,54 @@ func (s *AuthService) Login(email, password string) (*models.User, error) {
 		return nil, ErrUserDisabled
 	}
 	now := time.Now()
-	s.db.Model(&user).Update("last_login_at", &now)
+	s.db.Model(&user).Updates(map[string]interface{}{"last_login_at": &now, "last_login_ip": ip})
+	return &user, nil
+}
+
+// UpdateProfile 更新账户资料: 用户名(name)/昵称(nickname)/QQ。
+func (s *AuthService) UpdateProfile(userID uint64, name, nickname, qq string) (*models.User, error) {
+	var user models.User
+	if err := s.db.First(&user, userID).Error; err != nil {
+		return nil, err
+	}
+	updates := map[string]interface{}{}
+	if name != "" {
+		updates["name"] = name
+	}
+	if nickname != "" {
+		updates["nickname"] = nickname
+	}
+	updates["qq"] = qq
+	if len(updates) > 0 {
+		if err := s.db.Model(&user).Updates(updates).Error; err != nil {
+			return nil, err
+		}
+	}
+	if err := s.db.First(&user, userID).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+// ChangeEmail 修改登录邮箱(唯一性校验, 冲突返回 ErrEmailExists)。
+func (s *AuthService) ChangeEmail(userID uint64, newEmail string) (*models.User, error) {
+	var count int64
+	if err := s.db.Model(&models.User{}).Where("email = ? AND id != ?", newEmail, userID).Count(&count).Error; err != nil {
+		return nil, err
+	}
+	if count > 0 {
+		return nil, ErrEmailExists
+	}
+	var user models.User
+	if err := s.db.First(&user, userID).Error; err != nil {
+		return nil, err
+	}
+	if err := s.db.Model(&user).Update("email", newEmail).Error; err != nil {
+		return nil, err
+	}
+	if err := s.db.First(&user, userID).Error; err != nil {
+		return nil, err
+	}
 	return &user, nil
 }
 

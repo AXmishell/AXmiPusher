@@ -86,6 +86,37 @@ func migrate(gdb *gorm.DB) error {
 	if err := migrateLegacyAdmins(gdb); err != nil {
 		return err
 	}
+	// 清理旧版遗留列(租户折叠前 users 表有 tenant_id 列)。
+	if err := migrateLegacySchema(gdb); err != nil {
+		return err
+	}
+	return nil
+}
+
+// migrateLegacySchema 清理旧版遗留的 users.tenant_id 列。
+// 2026-08 租户折叠入用户后 User 模型不再有 TenantID 字段, 但旧库的
+// users 表仍保留 tenant_id 列(可能带 NOT NULL 约束), 新代码注册插入时
+// 该列无值 → NOT NULL constraint failed(已踩坑)。启动时检测并删除。
+func migrateLegacySchema(gdb *gorm.DB) error {
+	hasCol := false
+	switch gdb.Dialector.Name() {
+	case "sqlite":
+		gdb.Raw("SELECT count(*) FROM pragma_table_info('users') WHERE name='tenant_id'").Scan(&hasCol)
+	case "postgres":
+		gdb.Raw("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='tenant_id')").Scan(&hasCol)
+	}
+	if !hasCol {
+		return nil
+	}
+	// SQLite 删列前必须先删依赖该列的索引(否则报 "error in index ... after drop column")。
+	if gdb.Dialector.Name() == "sqlite" {
+		if err := gdb.Exec("DROP INDEX IF EXISTS idx_users_tenant_id").Error; err != nil {
+			return fmt.Errorf("清理旧版索引失败: %w", err)
+		}
+	}
+	if err := gdb.Exec("ALTER TABLE users DROP COLUMN tenant_id").Error; err != nil {
+		return fmt.Errorf("清理旧版 users.tenant_id 失败: %w", err)
+	}
 	return nil
 }
 

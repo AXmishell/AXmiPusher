@@ -63,6 +63,8 @@ type User struct {
 	PlanID       uint64     `json:"plan_id"`                // 当前套餐
 	Role         string     `gorm:"size:32;not null;default:tenant_user" json:"role"`
 	Status       string     `gorm:"size:16;not null;default:active" json:"status"`
+	QQ           string     `gorm:"size:32" json:"qq"`            // QQ 号码(账户设置, 可空非唯一)
+	LastLoginIP  string     `gorm:"size:64" json:"last_login_ip"` // 最近一次登录 IP
 	LastLoginAt  *time.Time `json:"last_login_at"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`

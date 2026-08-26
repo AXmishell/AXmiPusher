@@ -11,6 +11,7 @@ import Plans from './pages/Plans';
 import Channels from './pages/Channels';
 import Inbox from './pages/Inbox';
 import BatchTasks from './pages/BatchTasks';
+import Profile from './pages/Profile';
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="channels" element={<Channels />} />
           <Route path="inbox" element={<Inbox />} />
           <Route path="batch-tasks" element={<BatchTasks />} />
+          <Route path="settings" element={<Profile />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -18,6 +18,10 @@ export interface User {
   status: string;
   quota?: string;
   plan_id?: number;
+  qq?: string;
+  last_login_ip?: string;
+  last_login_at?: string | null;
+  created_at: string;
 }
 
 export interface ApiKey {

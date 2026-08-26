@@ -13,6 +13,7 @@ import {
   MailOutlined,
   CarryOutOutlined,
   LockOutlined,
+  SettingOutlined,
 } from '@ant-design/icons';
 import { Dropdown, Space, Avatar, Badge } from 'antd';
 import { useEffect, useState } from 'react';
@@ -68,6 +69,7 @@ export default function MainLayout() {
           { path: '/channels', name: '渠道配置', icon: <ThunderboltOutlined /> },
           { path: '/inbox', name: '站内信', icon: <MailOutlined /> },
           { path: '/batch-tasks', name: '批量任务', icon: <CarryOutOutlined /> },
+          { path: '/settings', name: '账户设置', icon: <SettingOutlined /> },
         ],
       }}
       menuItemRender={(item, dom) => (

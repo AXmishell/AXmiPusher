@@ -56,6 +56,8 @@ func NewRouter(a *app.App) *gin.Engine {
 			auth.POST("/register", handler.Register(a))
 			auth.POST("/login", handler.Login(a))
 			auth.GET("/me", middleware.RequireAuth(getAuth), handler.Me(a))
+			auth.PUT("/profile", middleware.RequireAuth(getAuth), handler.UpdateProfile(a))
+			auth.PUT("/email", middleware.RequireAuth(getAuth), handler.ChangeEmail(a))
 			auth.POST("/change-password", middleware.RequireAuth(getAuth), handler.ChangePassword(a))
 		}
 
