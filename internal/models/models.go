@@ -131,8 +131,7 @@ type Template struct {
 	Name        string    `gorm:"size:128;not null" json:"name"`
 	Content     string    `gorm:"type:text;not null" json:"content"` // 含 {{var}} 占位符
 	ChannelType string    `gorm:"size:32;not null;default:webhook" json:"channel_type"`
-	Status      string    `gorm:"size:16;not null;default:active" json:"status"` // active | disabled
-	CurrentVersion int    `gorm:"not null;default:1" json:"current_version"`
+	Status      string    `gorm:"size:16;not null;default:active" json:"status"` // active(审核已移除, 创建即生效; 列保留兼容旧库)
 	CreatedBy   uint64    `json:"created_by"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -141,21 +140,7 @@ type Template struct {
 // TableName 模板表。
 func (Template) TableName() string { return "templates" }
 
-// TemplateVersion 模板版本(审核流: pending → approved/rejected)。
-type TemplateVersion struct {
-	ID         uint64     `gorm:"primaryKey;autoIncrement" json:"id"`
-	TemplateID uint64     `gorm:"not null;index" json:"template_id"`
-	Version    int        `gorm:"not null" json:"version"`
-	Content    string     `gorm:"type:text;not null" json:"content"`
-	ReviewStatus string   `gorm:"size:16;not null;default:pending" json:"review_status"` // pending|approved|rejected
-	ReviewNote string     `gorm:"size:512" json:"review_note"`
-	ReviewedBy *uint64    `json:"reviewed_by"`
-	ReviewedAt *time.Time `json:"reviewed_at"`
-	CreatedBy  uint64     `json:"created_by"`
-	CreatedAt  time.Time  `json:"created_at"`
-}
-
-// Channel 渠道配置(邮件 SMTP 等, 租户可覆盖平台默认)。
+// Channel 通道配置(邮件 SMTP 等, 租户可覆盖平台默认)。
 type Channel struct {
 	ID        uint64         `gorm:"primaryKey;autoIncrement" json:"id"`
 	TenantID  uint64         `gorm:"not null;default:0;index" json:"tenant_id"` // 0 = 平台默认

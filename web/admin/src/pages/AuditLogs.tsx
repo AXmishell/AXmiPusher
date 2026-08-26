@@ -6,8 +6,6 @@ const actionColor: Record<string, string> = {
   'template.create': 'blue',
   'template.update': 'blue',
   'template.delete': 'blue',
-  'review.approve': 'green',
-  'review.reject': 'red',
   'tenant.set_status': 'orange',
   'user.set_status': 'orange',
   'plan.create': 'purple',

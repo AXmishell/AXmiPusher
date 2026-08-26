@@ -33,20 +33,6 @@ export interface Admin {
   created_at: string;
 }
 
-export interface ReviewItem {
-  template_id: number;
-  tenant_id: number;
-  tenant_name: string;
-  code: string;
-  name: string;
-  channel_type: string;
-  version_id: number;
-  version: number;
-  content: string;
-  review_status: string;
-  created_at: string;
-}
-
 export interface Plan {
   id: number;
   name: string;

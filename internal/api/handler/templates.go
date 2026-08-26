@@ -31,7 +31,7 @@ func ListTemplates(a *app.App) gin.HandlerFunc {
 	}
 }
 
-// CreateTemplate 创建模板(自动提交审核)。
+// CreateTemplate 创建模板(创建即生效)。
 func CreateTemplate(a *app.App) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req createTemplateRequest
@@ -52,7 +52,7 @@ func CreateTemplate(a *app.App) gin.HandlerFunc {
 	}
 }
 
-// UpdateTemplate 更新模板(生成新版本待审核)。
+// UpdateTemplate 更新模板(更新后直接生效)。
 func UpdateTemplate(a *app.App) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id, err := strconv.ParseUint(c.Param("id"), 10, 64)
@@ -65,7 +65,7 @@ func UpdateTemplate(a *app.App) gin.HandlerFunc {
 			response.BadRequest(c, "参数错误")
 			return
 		}
-		if err := a.Templates.UpdateTemplate(resolveTenantID(c), id, currentUserID(c), req.Name, req.Content, req.ChannelType); err != nil {
+		if err := a.Templates.UpdateTemplate(resolveTenantID(c), id, req.Name, req.Content, req.ChannelType); err != nil {
 			response.BadRequest(c, "更新失败: "+err.Error())
 			return
 		}

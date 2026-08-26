@@ -3,7 +3,6 @@ import { ProLayout } from '@ant-design/pro-components';
 import {
   DashboardOutlined,
   UserOutlined,
-  AuditOutlined,
   GiftOutlined,
   PayCircleOutlined,
   FileSearchOutlined,
@@ -49,7 +48,6 @@ export default function MainLayout() {
   const menuRoutes = [
     { path: '/', name: '平台概览', icon: <DashboardOutlined /> },
     { path: '/users', name: '用户管理', icon: <UserOutlined /> },
-    { path: '/reviews', name: '模板审核', icon: <AuditOutlined /> },
     { path: '/plans', name: '套餐管理', icon: <GiftOutlined /> },
     { path: '/payments', name: '支付订单', icon: <PayCircleOutlined /> },
     { path: '/audit-logs', name: '审计日志', icon: <FileSearchOutlined /> },

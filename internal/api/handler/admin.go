@@ -226,17 +226,14 @@ func AdminStats(a *app.App) gin.HandlerFunc {
 		var userCount, templateCount int64
 		a.DB.Model(&models.User{}).Count(&userCount)
 		a.DB.Model(&models.Template{}).Count(&templateCount)
-		var pendingReviews int64
-		a.DB.Model(&models.TemplateVersion{}).Where("review_status = ?", models.StatusPending).Count(&pendingReviews)
 		rate := 0.0
 		if total > 0 {
 			rate = float64(success) / float64(total) * 100
 		}
 		response.OK(c, gin.H{
-			"messages":        gin.H{"total": total, "success": success, "failed": failed, "success_rate": round1(rate)},
-			"users":           userCount,
-			"templates":       templateCount,
-			"pending_reviews": pendingReviews,
+			"messages":  gin.H{"total": total, "success": success, "failed": failed, "success_rate": round1(rate)},
+			"users":     userCount,
+			"templates": templateCount,
 		})
 	}
 }

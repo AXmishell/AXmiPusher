@@ -5,7 +5,6 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Admins from './pages/Admins';
-import Reviews from './pages/Reviews';
 import Plans from './pages/Plans';
 import Payments from './pages/Payments';
 import AuditLogs from './pages/AuditLogs';
@@ -24,7 +23,6 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="users" element={<Users />} />
           <Route path="admins" element={<Admins />} />
-          <Route path="reviews" element={<Reviews />} />
           <Route path="plans" element={<Plans />} />
           <Route path="payments" element={<Payments />} />
           <Route path="audit-logs" element={<AuditLogs />} />

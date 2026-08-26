@@ -70,7 +70,6 @@ func migrate(gdb *gorm.DB) error {
 		&models.APIKey{},
 		&models.CompatKey{},
 		&models.Template{},
-		&models.TemplateVersion{},
 		&models.Channel{},
 		&models.WebhookSubscription{},
 		&models.BatchTask{},

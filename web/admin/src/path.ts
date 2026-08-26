@@ -9,7 +9,6 @@ const SPA_ROUTE_SEGMENTS = new Set([
   'login',
   'users',
   'admins',
-  'reviews',
   'plans',
   'payments',
   'audit-logs',

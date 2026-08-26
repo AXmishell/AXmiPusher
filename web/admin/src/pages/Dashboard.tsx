@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Row, Col, Card, Statistic } from 'antd';
-import { UserOutlined, SendOutlined, AuditOutlined, FileProtectOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { UserOutlined, SendOutlined, FileProtectOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { request } from '../api/client';
 
 interface AdminStats {
   messages: { total: number; success: number; failed: number; success_rate: number };
   users: number;
   templates: number;
-  pending_reviews: number;
 }
 
 export default function Dashboard() {
@@ -25,16 +24,6 @@ export default function Dashboard() {
         </Col>
         <Col span={6}>
           <Card><Statistic title="模板数" value={stats?.templates ?? '-'} prefix={<FileProtectOutlined />} /></Card>
-        </Col>
-        <Col span={6}>
-          <Card>
-            <Statistic
-              title="待审核模板"
-              value={stats?.pending_reviews ?? '-'}
-              prefix={<AuditOutlined />}
-              valueStyle={{ color: (stats?.pending_reviews ?? 0) > 0 ? '#dc2626' : undefined }}
-            />
-          </Card>
         </Col>
       </Row>
       <Row gutter={16} style={{ marginTop: 16 }}>
