@@ -33,17 +33,20 @@ func (s *InAppSender) Send(ctx context.Context, msg *queue.TaskMessage) error {
 	}
 	now := time.Now()
 
-	// 收件人解析: all → 全租户用户; 否则按邮箱查找用户。
+	// 收件人解析(租户已折叠入用户, users 表无 tenant_id 列, 勿按 tenant_id 查):
+	//   all → 发送者本人(该"租户"唯一用户); 否则按邮箱全局唯一查。
 	var targets []models.User
 	if msg.Recipient == "all" {
-		if err := s.db.WithContext(ctx).Where("tenant_id = ? AND status = ?",
-			msg.TenantID, models.StatusActive).Find(&targets).Error; err != nil {
-			return fmt.Errorf("查询租户用户失败: %w", err)
+		var u models.User
+		if err := s.db.WithContext(ctx).Where("id = ? AND status = ?",
+			msg.TenantID, models.StatusActive).First(&u).Error; err != nil {
+			return fmt.Errorf("查询发送者失败: %w", err)
 		}
+		targets = []models.User{u}
 	} else {
 		var u models.User
-		err := s.db.WithContext(ctx).Where("tenant_id = ? AND email = ? AND status = ?",
-			msg.TenantID, msg.Recipient, models.StatusActive).First(&u).Error
+		err := s.db.WithContext(ctx).Where("email = ? AND status = ?",
+			msg.Recipient, models.StatusActive).First(&u).Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return fmt.Errorf("站内信收件人不存在: %s", msg.Recipient)

@@ -74,12 +74,22 @@ func handle(c *gin.Context, a *app.App, source string) {
 
 	now := time.Now()
 	// 3. 转换并复用核心链路(建记录 + 入队)。
+	// Server酱 语义: 推送给 key 归属用户本人, 收件人按渠道适配:
+	//   inapp → "all"(站内信发给本人); email → 留空(回退通道配置的默认收件人);
+	//   webhook 忽略收件人(走回调订阅), apns/fcm 保留 key 值透传。
+	target := key
+	switch compat.DefaultChannel {
+	case "inapp":
+		target = "all"
+	case "email":
+		target = ""
+	}
 	mid, err := a.Messages.Send(c.Request.Context(), compat.TenantID, &service.SendRequest{
 		Title:      title,
 		Content:    desp,
 		Channel:    compat.DefaultChannel,
 		Priority:   "normal",
-		Recipients: []service.Recipient{{Target: key}},
+		Recipients: []service.Recipient{{Target: target}},
 	})
 	if err != nil {
 		sendFail(c, source, "push failed")
