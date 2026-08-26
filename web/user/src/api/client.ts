@@ -11,7 +11,6 @@ export interface ApiResp<T = unknown> {
 // 后端返回的业务对象类型。
 export interface User {
   id: number;
-  name?: string;
   email: string;
   nickname: string;
   role: string;

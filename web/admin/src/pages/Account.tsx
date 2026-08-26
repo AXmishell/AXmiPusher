@@ -4,7 +4,7 @@ import { MailOutlined, LockOutlined, IdcardOutlined, UserOutlined } from '@ant-d
 import { request, type Admin } from '../api/client';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 
-// 账户设置页: 账户信息展示 + 昵称/QQ + 邮箱 + 密码修改(镜像用户中心)。
+// 账户设置页: 账户信息展示 + 用户名/QQ + 邮箱 + 密码修改(镜像用户中心)。
 export default function Account() {
   const [admin, setAdmin] = useState<Admin | null>(null);
   const [profileForm] = Form.useForm();
@@ -57,7 +57,7 @@ export default function Account() {
       <Card title="账户信息" style={{ marginBottom: 16 }}>
         <Descriptions column={2} size="middle">
           <Descriptions.Item label="账号 ID">{admin?.id ?? '-'}</Descriptions.Item>
-          <Descriptions.Item label="账户昵称">{admin?.nickname || '-'}</Descriptions.Item>
+          <Descriptions.Item label="用户名">{admin?.nickname || '-'}</Descriptions.Item>
           <Descriptions.Item label="角色">{admin?.role === 'super_admin' ? '超管' : '管理员'}</Descriptions.Item>
           <Descriptions.Item label="邮箱">{admin?.email || '-'}</Descriptions.Item>
           <Descriptions.Item label="注册时间">
@@ -69,8 +69,8 @@ export default function Account() {
 
       <Card title="账户资料" style={{ marginBottom: 16 }}>
         <Form form={profileForm} layout="vertical" style={{ maxWidth: 480 }} onFinish={saveProfile}>
-          <Form.Item name="nickname" label="账户昵称" rules={[{ required: true, message: '请输入昵称' }, { max: 64, message: '最多 64 字' }]}>
-            <Input placeholder="昵称" prefix={<UserOutlined />} />
+          <Form.Item name="nickname" label="用户名" rules={[{ required: true, message: '请输入用户名' }, { max: 64, message: '最多 64 字' }]}>
+            <Input placeholder="用户名" prefix={<UserOutlined />} />
           </Form.Item>
           <Form.Item name="qq" label="QQ 号码" rules={[{ max: 32, message: '最多 32 位' }]}>
             <Input placeholder="QQ 号码(可空)" prefix={<IdcardOutlined />} />

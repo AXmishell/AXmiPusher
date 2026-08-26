@@ -62,8 +62,8 @@ func defaultIfEmpty(v, fallback string) string {
 	return v
 }
 
-// Register 开放注册: 直接创建用户(租户已折叠入用户, 业务表 tenant_id 即用户 ID)。
-func (s *AuthService) Register(email, password, tenantName, nickname string) (*models.User, error) {
+// Register 开放注册: 直接创建用户(名称/昵称已合并为用户名 nickname, 空则默认 email)。
+func (s *AuthService) Register(email, password, nickname string) (*models.User, error) {
 	if err := validatePassword(password); err != nil {
 		return nil, err
 	}
@@ -84,8 +84,7 @@ func (s *AuthService) Register(email, password, tenantName, nickname string) (*m
 		user = models.User{
 			Email:        email,
 			PasswordHash: string(hash),
-			Nickname:     nickname,
-			Name:         defaultIfEmpty(tenantName, email),
+			Nickname:     defaultIfEmpty(nickname, email),
 			Role:         models.RoleTenantAdmin,
 			Status:       models.StatusActive,
 		}
@@ -114,16 +113,13 @@ func (s *AuthService) Login(email, password, ip string) (*models.User, error) {
 	return &user, nil
 }
 
-// UpdateProfile 更新账户资料: 用户名(name)/昵称(nickname)/QQ。
-func (s *AuthService) UpdateProfile(userID uint64, name, nickname, qq string) (*models.User, error) {
+// UpdateProfile 更新账户资料: 用户名(nickname)/QQ。
+func (s *AuthService) UpdateProfile(userID uint64, nickname, qq string) (*models.User, error) {
 	var user models.User
 	if err := s.db.First(&user, userID).Error; err != nil {
 		return nil, err
 	}
 	updates := map[string]interface{}{}
-	if name != "" {
-		updates["name"] = name
-	}
 	if nickname != "" {
 		updates["nickname"] = nickname
 	}

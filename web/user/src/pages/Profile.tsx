@@ -17,14 +17,14 @@ export default function Profile() {
     request<{ user: User }>({ url: '/auth/me', method: 'GET' })
       .then((d) => {
         setUser(d.user);
-        profileForm.setFieldsValue({ name: d.user.name, nickname: d.user.nickname, qq: d.user.qq });
+        profileForm.setFieldsValue({ nickname: d.user.nickname, qq: d.user.qq });
         emailForm.setFieldsValue({ email: d.user.email });
       })
       .catch(() => {});
   }, [profileForm, emailForm]);
 
-  // 保存用户名/昵称/QQ。
-  const saveProfile = async (values: { name: string; nickname: string; qq?: string }) => {
+  // 保存用户名/QQ。
+  const saveProfile = async (values: { nickname: string; qq?: string }) => {
     setSaving(true);
     try {
       const d = await request<{ user: User }>({ url: '/auth/profile', method: 'PUT', data: values });
@@ -57,8 +57,7 @@ export default function Profile() {
       <Card title="账户信息" style={{ marginBottom: 16 }}>
         <Descriptions column={2} size="middle">
           <Descriptions.Item label="账号 ID">{user?.id ?? '-'}</Descriptions.Item>
-          <Descriptions.Item label="账户昵称">{user?.nickname || '-'}</Descriptions.Item>
-          <Descriptions.Item label="用户名">{user?.name || '-'}</Descriptions.Item>
+          <Descriptions.Item label="用户名">{user?.nickname || '-'}</Descriptions.Item>
           <Descriptions.Item label="邮箱">{user?.email || '-'}</Descriptions.Item>
           <Descriptions.Item label="注册时间">
             {user?.created_at ? new Date(user.created_at).toLocaleString() : '-'}
@@ -69,11 +68,8 @@ export default function Profile() {
 
       <Card title="账户资料" style={{ marginBottom: 16 }}>
         <Form form={profileForm} layout="vertical" style={{ maxWidth: 480 }} onFinish={saveProfile}>
-          <Form.Item name="name" label="用户名" rules={[{ required: true, message: '请输入用户名' }, { max: 128, message: '最多 128 字' }]}>
+          <Form.Item name="nickname" label="用户名" rules={[{ required: true, message: '请输入用户名' }, { max: 64, message: '最多 64 字' }]}>
             <Input placeholder="用户名" prefix={<UserOutlined />} />
-          </Form.Item>
-          <Form.Item name="nickname" label="账户昵称" rules={[{ max: 64, message: '最多 64 字' }]}>
-            <Input placeholder="昵称(可空)" />
           </Form.Item>
           <Form.Item name="qq" label="QQ 号码" rules={[{ max: 32, message: '最多 32 位' }]}>
             <Input placeholder="QQ 号码(可空)" prefix={<IdcardOutlined />} />

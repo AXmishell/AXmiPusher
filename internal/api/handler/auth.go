@@ -15,10 +15,9 @@ import (
 
 // registerRequest 注册请求。
 type registerRequest struct {
-	Email      string `json:"email" binding:"required,email"`
-	Password   string `json:"password" binding:"required"`
-	TenantName string `json:"tenant_name"`
-	Nickname   string `json:"nickname"`
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+	Nickname string `json:"nickname"` // 用户名(可选, 默认 email)
 }
 
 // Register 开放注册。
@@ -29,7 +28,7 @@ func Register(a *app.App) gin.HandlerFunc {
 			response.BadRequest(c, "参数错误: "+err.Error())
 			return
 		}
-		user, err := a.Auth.Register(req.Email, req.Password, req.TenantName, req.Nickname)
+		user, err := a.Auth.Register(req.Email, req.Password, req.Nickname)
 		if err != nil {
 			response.Conflict(c, err.Error())
 			return
@@ -123,12 +122,11 @@ func Me(a *app.App) gin.HandlerFunc {
 
 // updateProfileRequest 更新账户资料请求。
 type updateProfileRequest struct {
-	Name     string `json:"name"`     // 用户名(原租户名语义)
-	Nickname string `json:"nickname"` // 昵称
+	Nickname string `json:"nickname"` // 用户名
 	QQ       string `json:"qq"`       // QQ 号码(可空)
 }
 
-// UpdateProfile 更新用户名/昵称/QQ(登录态)。
+// UpdateProfile 更新用户名/QQ(登录态)。
 func UpdateProfile(a *app.App) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		user := middleware.CurrentUser(c)
@@ -141,19 +139,15 @@ func UpdateProfile(a *app.App) gin.HandlerFunc {
 			response.BadRequest(c, "参数错误: "+err.Error())
 			return
 		}
-		if req.Name != "" && len(req.Name) > 128 {
-			response.BadRequest(c, "用户名过长(最多 128 字)")
-			return
-		}
 		if len(req.Nickname) > 64 {
-			response.BadRequest(c, "昵称过长(最多 64 字)")
+			response.BadRequest(c, "用户名过长(最多 64 字)")
 			return
 		}
 		if len(req.QQ) > 32 {
 			response.BadRequest(c, "QQ 号过长")
 			return
 		}
-		updated, err := a.Auth.UpdateProfile(user.ID, req.Name, req.Nickname, req.QQ)
+		updated, err := a.Auth.UpdateProfile(user.ID, req.Nickname, req.QQ)
 		if err != nil {
 			response.ServerError(c, "更新失败: "+err.Error())
 			return

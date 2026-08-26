@@ -107,9 +107,9 @@ export default function MainLayout() {
       actionsRender={() => [
         <Space key="tenant" style={{ marginRight: 16, color: 'rgba(0,0,0,.65)' }}>
           <Avatar size="small" style={{ background: '#1e40af' }}>
-            {(user?.name || user?.nickname || '').charAt(0) || 'U'}
+            {(user?.nickname || '').charAt(0) || 'U'}
           </Avatar>
-          名称: {user?.name || user?.nickname || '-'}
+          用户名: {user?.nickname || '-'}
         </Space>,
       ]}
       layout="mix"

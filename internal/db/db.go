@@ -93,29 +93,32 @@ func migrate(gdb *gorm.DB) error {
 	return nil
 }
 
-// migrateLegacySchema 清理旧版遗留的 users.tenant_id 列。
-// 2026-08 租户折叠入用户后 User 模型不再有 TenantID 字段, 但旧库的
-// users 表仍保留 tenant_id 列(可能带 NOT NULL 约束), 新代码注册插入时
-// 该列无值 → NOT NULL constraint failed(已踩坑)。启动时检测并删除。
+// migrateLegacySchema 清理旧版遗留列(租户折叠前的 users.tenant_id、名称/昵称合并前的 users.name)。
+// 旧库列不在新模型时, 新代码插入会缺列(NOT NULL 约束)或残留无用列, 启动时检测并删除。
 func migrateLegacySchema(gdb *gorm.DB) error {
-	hasCol := false
-	switch gdb.Dialector.Name() {
-	case "sqlite":
-		gdb.Raw("SELECT count(*) FROM pragma_table_info('users') WHERE name='tenant_id'").Scan(&hasCol)
-	case "postgres":
-		gdb.Raw("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='tenant_id')").Scan(&hasCol)
-	}
-	if !hasCol {
-		return nil
-	}
-	// SQLite 删列前必须先删依赖该列的索引(否则报 "error in index ... after drop column")。
-	if gdb.Dialector.Name() == "sqlite" {
-		if err := gdb.Exec("DROP INDEX IF EXISTS idx_users_tenant_id").Error; err != nil {
-			return fmt.Errorf("清理旧版索引失败: %w", err)
+	// 目标删除列(按需扩展)。
+	legacyCols := []string{"tenant_id", "name"}
+	for _, col := range legacyCols {
+		hasCol := false
+		switch gdb.Dialector.Name() {
+		case "sqlite":
+			gdb.Raw("SELECT count(*) FROM pragma_table_info('users') WHERE name=?", col).Scan(&hasCol)
+		case "postgres":
+			gdb.Raw("SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name=?)", col).Scan(&hasCol)
 		}
-	}
-	if err := gdb.Exec("ALTER TABLE users DROP COLUMN tenant_id").Error; err != nil {
-		return fmt.Errorf("清理旧版 users.tenant_id 失败: %w", err)
+		if !hasCol {
+			continue
+		}
+		// SQLite 删列前必须先删依赖该列的索引(否则报 "error in index ... after drop column")。
+		if gdb.Dialector.Name() == "sqlite" {
+			idxName := "idx_users_" + col
+			if err := gdb.Exec("DROP INDEX IF EXISTS "+idxName).Error; err != nil {
+				return fmt.Errorf("清理旧版索引失败(%s): %w", idxName, err)
+			}
+		}
+		if err := gdb.Exec("ALTER TABLE users DROP COLUMN " + col).Error; err != nil {
+			return fmt.Errorf("清理旧版 users.%s 失败: %w", col, err)
+		}
 	}
 	return nil
 }

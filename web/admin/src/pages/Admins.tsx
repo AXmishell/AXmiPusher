@@ -67,7 +67,7 @@ export default function Admins() {
         columns={[
           { title: 'ID', dataIndex: 'id', width: 70 },
           { title: '邮箱', dataIndex: 'email', width: 220, copyable: true },
-          { title: '昵称', dataIndex: 'nickname', width: 120, render: (_, r) => r.nickname || '-' },
+          { title: '用户名', dataIndex: 'nickname', width: 120, render: (_, r) => r.nickname || '-' },
           {
             title: '角色',
             dataIndex: 'role',
@@ -136,7 +136,7 @@ export default function Admins() {
           <Form.Item name="password" label="密码" rules={[{ required: true, min: 8, message: '密码至少 8 位' }]}>
             <Input.Password placeholder="至少 8 位" />
           </Form.Item>
-          <Form.Item name="nickname" label="昵称" rules={[{ max: 32, message: '昵称最长 32 个字符' }]}>
+          <Form.Item name="nickname" label="用户名" rules={[{ max: 32, message: '用户名最长 32 个字符' }]}>
             <Input placeholder="可选" />
           </Form.Item>
         </Form>

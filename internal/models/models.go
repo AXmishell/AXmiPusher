@@ -53,14 +53,14 @@ const (
 )
 
 // User 用户(开放注册, 直接承载配额/套餐; 业务表 tenant_id 的值即归属用户 ID)。
+// 2026-08 名称/昵称合并: 统一用 Nickname(用户名), 不再有 Name 字段。
 type User struct {
 	ID           uint64     `gorm:"primaryKey;autoIncrement" json:"id"`
 	Email        string     `gorm:"size:255;not null;uniqueIndex" json:"email"`
 	PasswordHash string     `gorm:"size:255;not null" json:"-"`
-	Nickname     string     `gorm:"size:64" json:"nickname"`
-	Name         string     `gorm:"size:128" json:"name"`   // 名称(原租户名, 注册时默认 email)
-	Quota        string     `gorm:"type:text" json:"quota"` // JSONB: 配额信息(套餐驱动)
-	PlanID       uint64     `json:"plan_id"`                // 当前套餐
+	Nickname     string     `gorm:"size:64" json:"nickname"` // 用户名(注册时默认 email)
+	Quota        string     `gorm:"type:text" json:"quota"`  // JSONB: 配额信息(套餐驱动)
+	PlanID       uint64     `json:"plan_id"`                 // 当前套餐
 	Role         string     `gorm:"size:32;not null;default:tenant_user" json:"role"`
 	Status       string     `gorm:"size:16;not null;default:active" json:"status"`
 	QQ           string     `gorm:"size:32" json:"qq"`            // QQ 号码(账户设置, 可空非唯一)

@@ -32,7 +32,7 @@ export default function Users() {
       columns={[
         { title: 'ID', dataIndex: 'id', width: 70 },
         { title: '邮箱', dataIndex: 'email', width: 220, copyable: true },
-        { title: '昵称', dataIndex: 'nickname', width: 120 },
+        { title: '用户名', dataIndex: 'nickname', width: 120 },
         { title: '用户 ID', dataIndex: 'tenant_id', width: 90 },
         {
           title: '角色',

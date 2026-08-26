@@ -8,7 +8,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const onFinish = async (values: { email: string; password: string; nickname: string; tenant_name: string }) => {
+  const onFinish = async (values: { email: string; password: string; nickname: string }) => {
     setLoading(true);
     try {
       const d = await request<{ token: string }>({ url: '/auth/register', method: 'POST', data: values });
@@ -36,11 +36,8 @@ export default function Register() {
           <Form.Item name="email" label="邮箱" rules={[{ required: true, type: 'email', message: '请输入有效邮箱' }]}>
             <Input placeholder="you@example.com" size="large" />
           </Form.Item>
-          <Form.Item name="nickname" label="昵称">
-            <Input placeholder="你的昵称" size="large" />
-          </Form.Item>
-          <Form.Item name="tenant_name" label="名称">
-            <Input placeholder="你的名称" size="large" />
+          <Form.Item name="nickname" label="用户名" rules={[{ max: 64, message: '最多 64 字' }]}>
+            <Input placeholder="你的用户名(可空, 默认邮箱)" size="large" />
           </Form.Item>
           <Form.Item name="password" label="密码" rules={[{ required: true, min: 8, message: '密码至少 8 位' }]}>
             <Input.Password placeholder="至少 8 位" size="large" />
