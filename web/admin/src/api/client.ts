@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { notify } from './notice';
+import { isAdminPathSegment } from '../path';
 
 export interface ApiResp<T = unknown> {
   code: number;
@@ -91,10 +92,10 @@ client.interceptors.response.use(
     const body = error.response?.data;
     if (status === 401) {
       localStorage.removeItem('mp_admin_token');
-      // 跳转登录页(动态取当前前缀, 支持轮换 admin 路径)。
+      // 跳转登录页(动态取当前前缀, 支持轮换 admin 路径; dev 模式无前缀时跳 /login)。
       if (!location.pathname.endsWith('/login')) {
         const seg = location.pathname.split('/').filter(Boolean)[0];
-        location.href = `${seg ? '/' + seg : ''}/login`;
+        location.href = `${isAdminPathSegment(seg) ? '/' + seg : ''}/login`;
       }
     }
     notify(body?.message || error.message || '请求失败');
