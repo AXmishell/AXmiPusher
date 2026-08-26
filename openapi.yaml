@@ -82,6 +82,49 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/MeResult' }
+  /api/v1/auth/profile:
+    put:
+      tags: [auth]
+      summary: 更新账户资料(用户名/昵称/QQ)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, description: 用户名(原租户名语义), example: 我的团队 }
+                nickname: { type: string, description: 昵称(可空) }
+                qq: { type: string, description: QQ 号码(可空) }
+      responses:
+        '200':
+          description: 更新成功, 返回最新用户信息
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeResult' }
+  /api/v1/auth/email:
+    put:
+      tags: [auth]
+      summary: 修改登录邮箱(唯一性校验, 冲突返回 409)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, example: new@example.com }
+      responses:
+        '200':
+          description: 修改成功, 旧邮箱立即失效
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeResult' }
+        '409':
+          description: 邮箱已被其他用户注册
 
   # ============ 管理员(独立体系) ============
   /api/v1/admin/auth/login:
@@ -615,6 +658,9 @@ components:
         plan_id: { type: integer, description: 当前套餐 ID }
         role: { type: string, enum: [tenant_admin, tenant_user, platform_admin] }
         status: { type: string }
+        qq: { type: string, description: QQ 号码(可空) }
+        last_login_ip: { type: string, description: 最近一次登录 IP }
+        last_login_at: { type: string, format: date-time, nullable: true }
     Admin:
       type: object
       properties:
