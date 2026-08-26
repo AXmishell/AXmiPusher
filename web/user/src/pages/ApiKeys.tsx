@@ -85,15 +85,15 @@ function CompatKeyTab() {
             label="兼容协议"
             rules={[{ required: true }]}
             options={[
-              { label: 'Server酱 v2 (sctapi)', value: 'serverchan_v2' },
-              { label: 'Server酱 v1 (sc)', value: 'serverchan_v1' },
+              { label: 'Server酱·Turbo版 (sctapi)', value: 'serverchan_v2' },
+              { label: 'Server酱3 (sc)', value: 'serverchan_v1' },
             ]}
           />
           <ProFormText
             name="external_key"
             label="外部 Key"
             placeholder="留空自动生成，可导入原 SendKey/SCKEY"
-            tooltip="导入原 Server酱 的 SendKey，老脚本即可无缝切换"
+            tooltip="导入原 Server酱 的 Key，老脚本即可无缝切换"
           />
           <ProFormSelect name="default_channel" label="默认渠道" initialValue="webhook" options={[{ label: 'Webhook', value: 'webhook' }]} />
           <ProFormTextArea name="description" label="备注" />
@@ -109,7 +109,7 @@ function CompatKeyTab() {
           title: '协议',
           dataIndex: 'source',
           width: 130,
-          render: (_, r) => <Tag color={r.source === 'serverchan_v2' ? 'blue' : 'green'}>{r.source === 'serverchan_v2' ? 'Server酱 v2' : 'Server酱 v1'}</Tag>,
+          render: (_, r) => <Tag color={r.source === 'serverchan_v2' ? 'blue' : 'green'}>{r.source === 'serverchan_v2' ? 'Server酱·Turbo版' : 'Server酱3'}</Tag>,
         },
         {
           title: '外部 Key',

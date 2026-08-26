@@ -103,7 +103,7 @@ func CreateCompatKey(a *app.App) gin.HandlerFunc {
 			return
 		}
 		if req.Source != models.CompatSourceServerChanV1 && req.Source != models.CompatSourceServerChanV2 {
-			response.BadRequest(c, "source 必须是 serverchan_v1 或 serverchan_v2")
+			response.BadRequest(c, "source 必须是 serverchan_v1(Server酱3) 或 serverchan_v2(Server酱·Turbo版)")
 			return
 		}
 		externalKey := req.ExternalKey

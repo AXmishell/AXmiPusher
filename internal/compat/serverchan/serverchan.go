@@ -1,4 +1,4 @@
-// Package serverchan 实现 Server酱 v1/v2 兼容接口。
+// Package serverchan 实现 Server酱 兼容接口(Server酱3 sc 形态 / Server酱·Turbo版 sctapi 形态)。
 // 老客户端零改动接入: 外部 key 查映射表 → 转核心消息 → 复用核心链路。
 // 响应格式严格照抄原版, 客户端才能无感切换。
 package serverchan
@@ -29,8 +29,8 @@ func parseCompatKey(raw string) string {
 }
 
 // RegisterRoutes 注册兼容路由(严格照抄原版路径形态)。
-//   POST /api/sctapi/{SendKey}.send   Server酱 v2 (sctapi.ftqq.com 形态)
-//   GET  /api/sc/{SCKEY}.send         Server酱 v1 (sc.ftqq.com 形态)
+//   POST /api/sctapi/{SendKey}.send   Server酱·Turbo版 (sctapi.ftqq.com 形态)
+//   GET  /api/sc/{SCKEY}.send         Server酱3 (sc.ftqq.com 形态)
 // 兼容实现也用 wildcard 段, 手动解析 {key}.send。
 func RegisterRoutes(r *gin.Engine, a *app.App) {
 	g := r.Group("/api")
