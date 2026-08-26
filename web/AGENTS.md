@@ -20,17 +20,20 @@
 
 ## 页面清单
 
-- user 13 页: Dashboard / SendMessage / Messages / ApiKeys / CompatKeys / Callbacks / Plans / Channels / Inbox / BatchTasks / Profile(账户设置) / Login / Register
+- user 12 页(Dashboard / SendMessage / Messages / ApiKeys / Callbacks / Plans / Channels / Inbox / BatchTasks / Profile(账户设置) / Login / Register): **CompatKeys 非独立页面** — `/compat-keys` 路由重定向到 `/api-keys`, Server酱 兼容管理是 ApiKeys.tsx 内 Tab(下拉选项: Server酱·Turbo版(sctapi, 值 serverchan_v2)/ Server酱3(sc, 值 serverchan_v1))
 - admin 10 页: Users / Admins(管理员管理, 仅超管可见) / Reviews / Plans / Payments / AuditLogs / Settings(系统设置) / Account(账户设置) / Dashboard / Login
+- admin Users 页: 支持**新增用户**(工具栏按钮 → 邮箱/用户名/密码)+ **编辑用户**(邮箱/用户名/重置密码, ModalForm)+ 启禁用; 用户表无 tenant_id 列(租户已折叠, ID 即用户 ID)
+- admin Settings 页: 管理员后台路径支持**自定义填写(8-32 位字母数字)+ 应用 + 随机轮换**, 应用/轮换后旧路径 404 废除并自动跳转新路径
 - 2026-08 名称/昵称已合并为用户名: User 只保留 nickname(注册时默认 email), 无 name/tenant_name; 账户设置页 Profile(用户中心)/Account(管理后台)展示账号 ID/用户名/邮箱/注册时间/最近登录 IP, 支持改用户名/QQ/邮箱/密码/TOTP
 
 ## 关键差异(admin vs user)
 
-- admin: `<BrowserRouter basename={动态取当前路径第一段}>`, 适配部署在任意随机前缀下; 支持运行期轮换 admin 路径(无需重新构建)
+- admin: `<BrowserRouter basename={动态取当前路径第一段}>`, 适配部署在任意随机前缀下; 支持运行期轮换 admin 路径(无需重新构建); **独有 path.ts**(SPA_ROUTE_SEGMENTS 排除表 + resolveAdminBasename, 防 dev 误判)与 vite-env.d.ts; user 无此两文件
 - user: 无 base, 直接挂在根路径
 - admin 构建用**相对 base('./')**(vite.config.ts: `MP_ADMIN_BASE || './'`), 资源与路由均相对当前前缀; 安装向导从 dist index.html 解析 base 兜底; 旧约定"MP_ADMIN_BASE=/<随机串>/ 且必须与 MP_ADMIN_PATH 一致"已废弃
 - token key: user 用 localStorage `mp_token`, admin 用 `mp_admin_token`
 - 401 跳登录: user 跳 `/login`(判断 startsWith), admin 跳动态当前前缀 + `/login`(判断 endsWith); admin basename 用 path.ts 的 `resolveAdminBasename`(排除 login/users 等 SPA 路由段, 防 dev 模式误判前缀)
+- 布局差异: user 侧边栏带站内信未读角标(调 `/inbox/unread-count`); admin 菜单 `role==='super_admin'` 才注入"管理员管理"
 - **TOTP 两步验证**: 两端登录页均两阶段(密码 → `need_totp` → 验证码输入 → `/login/totp`); 账户设置页 TOTP 卡片(后端返回二维码 data URL 直显, 绑定/关闭均需验证码); 注册页有确认密码输入(提交含 confirm_password)
 
 ## API 调用约定
@@ -55,6 +58,7 @@
 - `.npmrc` 固定 registry=npmmirror(国内网络); 无 lockfile 提交
 - `allowScripts.esbuild` 白名单(pnpm-10 风格, 放行 esbuild postinstall)
 - **构建在云端完成**(2026-08 起): 本地不跑 build, 由 deploy/cloud-build-deploy.sh 在云端 npm install + build 后部署; 云端需 4G swap + `NODE_OPTIONS=--max-old-space-size=2048`(否则 node/tsc OOM Abort — 已踩坑)
+- CI(.github/workflows/ci.yml): frontend job matrix [user, admin] 用**显式官方 registry**(`--registry=https://registry.npmjs.org`)覆盖项目 .npmrc 的 npmmirror; 无 lint/test, 唯一质量门 `npm run build`(tsc -b + vite build)
 
 ## 维护注意
 

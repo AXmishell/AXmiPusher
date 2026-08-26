@@ -83,6 +83,42 @@ curl -I http://127.0.0.1:8080/<admin随机路径>/  # 返回管理后台
 > ```
 > 也可本地打包安装包:`powershell -File deploy/pack-install.ps1` → 输出 `dist-install/axmipusher-install-*.tar.gz`。
 
+## 部署(一键部署脚本)
+
+不想手动下载解压?一条命令自动完成:解析 GitHub **latest** → 下载安装包 → 停旧服务 → 清理旧配置 → 解压安装(binary 模式, systemd)→ 启动。
+
+> 以下命令在**云端服务器终端**(root)执行。脚本即 [`deploy/one-click-install.sh`](deploy/one-click-install.sh), 可先下载审阅再执行。
+
+```bash
+# 方式一: 管道直接执行(自动下载脚本并运行)
+curl -sSL https://raw.githubusercontent.com/AXmishell/AXmiPusher/main/deploy/one-click-install.sh | sudo bash
+
+# 方式二: 下载后本地执行(可先检查脚本内容)
+curl -sSL -o one-click-install.sh https://raw.githubusercontent.com/AXmishell/AXmiPusher/main/deploy/one-click-install.sh
+sudo bash one-click-install.sh
+```
+
+脚本行为可调(环境变量):
+
+| 环境变量 | 默认值 | 说明 |
+|---|---|---|
+| `INSTALL_DIR` | `/opt/axmipusher` | 安装目录(对应 install.sh 的 `--dir`) |
+| `KEEP_CONFIG` | `0` | 置 `1` 保留旧 `config.yaml`/`install.lock`(升级安装而非全新安装) |
+
+自定义目录 + 保留旧配置示例:
+
+```bash
+sudo INSTALL_DIR=/opt/mp KEEP_CONFIG=1 bash one-click-install.sh
+```
+
+执行完成后:
+
+1. 浏览器访问 `http://<IP>:8080/install` 走安装向导(环境检查 → 配置数据库/Redis → 创建平台超管 → 完成)
+2. 向导完成即可访问管理后台(当前版本安装时即注册路由, **无需重启**; v1.0.1 旧版需 `systemctl restart axmipusher`)
+3. 验证: `curl http://127.0.0.1:8080/api/v1/health` → `{"installed":true}`
+
+> 与「云端编译部署」的区别:一键部署脚本从 GitHub Releases 拉取**正式发布包**(版本固定), 适合新机器快速部署;日常迭代走 `git push cloud deploy` + `cloud-build-deploy.sh`(编译最新代码)。
+
 ## 账号体系
 
 | 体系 | 数据表 | 入口 | 说明 |

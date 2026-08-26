@@ -1,11 +1,11 @@
 # PROJECT KNOWLEDGE BASE — AXmiPusher
 
-**Generated:** 2026-08-26 21:40
-**Commit:** a6c23b1
+**Generated:** 2026-08-27
+**Commit:** 7462036
 **Branch:** deploy
 
 ## OVERVIEW
-消息推送平台: 统一受理消息 → 队列 → 多渠道发送(webhook/email/apns/fcm/站内信) → 回执统计。Go 后端(单仓库, api 单进程内置数据库轮询消费者) + 两个独立 React 前端, 支持 SQLite 单机运行与 PostgreSQL 生产部署。双端登录支持 TOTP 两步验证。
+消息推送平台: 统一受理消息 → 队列 → 多渠道发送(webhook/email/apns/fcm/站内信) → 回执统计。Go 后端(单仓库, api 单进程内置数据库轮询消费者) + 两个独立 React 前端, 支持 SQLite 单机、PostgreSQL 与 MySQL 5.7 生产部署。双端登录支持 TOTP 两步验证。
 
 ## STRUCTURE
 ```
@@ -28,10 +28,13 @@ AXmiPusher/
 | 消息受理链路 | internal/service/message.go | 幂等→限流→模板→入队 |
 | 渠道/熔断 | internal/channel/ | 5 渠道 + Breaker(内存/Redis) |
 | 路由/响应 | internal/api/ + internal/pkg/response | 统一 {code,message,data} |
+| 数据库方言/迁移 | internal/db/ + internal/config | 三方言(PostgreSQL/MySQL/SQLite)+ AutoMigrate + 旧库迁移 |
+| 配置契约/后台路径校验 | internal/config/ | ValidateAdminPath / GenerateRandomAdminPath / 三方言 DSN |
 | 安装向导 | internal/app/install.go + install.html | 由 app 包承载(非 api) |
 | 支付/订阅 | internal/service/payment.go | 易支付 MD5 签名 |
 | 登录/鉴权/TOTP | internal/service/auth.go | 两阶段登录(密码→TOTP)+ JWT 双体系 |
 | 账户设置(资料/邮箱/QQ/TOTP) | internal/api/handler/{auth,admin_auth}.go | 双端对称, 见 web/AGENTS.md |
+| 用户管理(新增/编辑/重置密码/启禁用) | internal/api/handler/admin.go | POST/PUT /admin/users + status |
 | 前端页面 | web/{user,admin}/src/pages/ | ProTable 模式 |
 | 前端托管 | cmd/web/ | 独立双端口 19876/19877, 读 config.yaml |
 | 安装分发 | deploy/install.sh + pack-install.ps1 | 详见 deploy/AGENTS.md |
@@ -61,8 +64,11 @@ AXmiPusher/
 - **TOTP 两步验证**: 用户与管理员双端对称; 登录两阶段(密码 → `need_totp`+`totp_token` 5 分钟临时凭证 kind=totp_pending → 验证码签发正式 token); `totp_secret` 存库 `json:"-"` 不回传, 未启用时存储值即待确认密钥; 二维码后端生成 PNG data URL 前端零依赖; 绑定/关闭均需验证码
 - **注册确认密码**: 前端输入框一致性校验 + 后端 `confirm_password` 校验(不一致 400), 前端提交时保留 confirm_password 字段
 - GitHub Actions CI: push `main`/`deploy` 或 PR→main 触发; 后端 job(Go 1.25: build/vet/test) + 前端 job(matrix user/admin: npm install + npm run build)
-- 管理后台随机路径: **admin 前端构建用相对 base('./'), 运行时任意前缀可用且支持轮换**(安装向导从 dist index.html 解析 base 兜底); 旧约定"构建 base 必须=MP_ADMIN_PATH"已废弃
+- 管理后台随机路径: **校验 8-32 位大小写字母数字**(`config.ValidateAdminPath`, 保留字 api/install/assets/login/register 禁用); 随机生成 16 位 62 字符集(`config.GenerateRandomAdminPath`); **admin 前端构建用相对 base('./'), 运行时任意前缀可用且支持轮换**; 旧约定"构建 base 必须=MP_ADMIN_PATH"已废弃
+- **后台路径唯一性/废除**: 更换路径后旧路径立即 **404 废除(不重定向)**; 运行中轮换的旧前缀由 AdminSPAHandler 动态校验 404, 重启后丢失显式路由的旧前缀由 NoRoute"长字母数字前缀 404"兜底(白名单: 用户中心 SPA 路由 register/messages/channels/settings)
 - 配置契约: `config.yaml` 路径硬编码 CWD(无 env 覆盖); 24 个 `MP_*` env(MP_DB_TYPE/MP_DB_HOST/MP_DB_PORT/MP_DB_USER/MP_DB_PASSWORD/MP_DB_NAME/MP_SQLITE_PATH, MP_QUEUE_POLL_INTERVAL/MP_QUEUE_BATCH_SIZE/MP_QUEUE_CLAIM_TIMEOUT/MP_QUEUE_MAX_CLAIM_ATTEMPTS/MP_QUEUE_CONCURRENCY, MP_JWT_SECRET/MP_ADMIN_PATH, MP_REDIS_ADDR/MP_REDIS_PASSWORD/MP_REDIS_DB/MP_REDIS_FALLBACK, MP_USER_DIST/MP_ADMIN_DIST/MP_USER_PORT/MP_ADMIN_PORT/MP_API_TARGET, MP_PORT); config.yaml 由安装向导生成, 缺失=未安装(503+/install)
+- **数据库三方言**: PostgreSQL / **MySQL 5.7** / SQLite 由 `MP_DB_TYPE` 切换; MySQL DSN 强制 `charset=utf8mb4&parseTime=True&loc=Local`; MySQL 认领 SQL 无 `SKIP LOCKED`(5.7 不支持, 用普通 FOR UPDATE)
+- **用户管理(管理后台)**: 新增用户 POST /admin/users(邮箱/用户名/密码必填); 编辑用户 PUT /admin/users/:id(邮箱/用户名/重置密码, 邮箱唯一性排除自身); 启禁用 PUT /admin/users/:id/status; 平台管理员(platform_admin)不可编辑/禁用
 - 列表接口对齐 AntD Pro 分页: `current/pageSize` 请求, `{data,total,success}` 响应
 - 幂等: request_id + DB 唯一索引兜底 + Redis SETNX 加速
 - **端口固化**: 主程序 8080 / 用户中心 19876 / 管理后台 19877, 由安装向导写入 config.yaml(web.user_port/admin_port/api_target); cmd/web 读配置, 优先级 MP_* env > config.yaml > 默认
@@ -78,7 +84,8 @@ AXmiPusher/
 - 模板存在"待审核版本"时禁止修改内容
 - Gin 根级 catch-all(`/*filepath`)与 /api 路由冲突 panic — 前端托管用 NoRoute 兜底
 - NoRoute 排除路径必须精确匹配 `/api` 或 `/api/` 前缀, 不能简单 `HasPrefix("/api")`(误伤 /api-keys 等 SPA 路由) — 已踩坑
-- 轮换 admin 随机路径后必须动态注册新前缀路由 + 同步前端相对 base(否则新路径 404)
+- 轮换 admin 路径后旧路径立即 404 废除(不重定向); 旧前缀显式路由保留但 handler 动态校验, 重启后由 NoRoute 长前缀 404 兜底 — 不得再恢复 302/301 重定向(旧地址可被传播利用)
+- MySQL 5.7 认领 SQL 不得用 `FOR UPDATE SKIP LOCKED`(8.0 才有) — 见 store/AGENTS.md
 - smtpSend 必须设连接 deadline(非 SMTP 端口会永久阻塞 worker) — 已踩坑
 - PayNotify 必须 `c.Request.ParseForm()` 后再读 PostForm, 否则字段为空
 - SQLite 删列前必须先删依赖该列的索引(否则报 "error in index ... after drop column"); SQLite 单写连接避免并发写锁
@@ -91,7 +98,7 @@ AXmiPusher/
 - 响应体: `{code:0,message:"ok",data}`; 业务码 0/40000/40100/40300/40400/40900/42900/50000; 消息发送受理返回 HTTP 202
 - 消息状态机: PENDING→SENDING→SUCCESS/FAILED/RETRYING/DEAD/CANCELLED; 熔断错误不重试直接 DEAD
 - 安装向导: install.lock 门控, 未安装时业务 API 返回 503, 引导 /install; 5 步 POST /api/install/{status,env-check,init,admin,complete}; admin 步骤创建 admins 表首条超管(super_admin)
-- 兼容层: Server酱 v1(/api/sc/{key}.send) + v2(/api/sctapi/{key}.send), 返回格式照抄原版
+- 兼容层: **Server酱3**(`/api/sc/{key}.send`, 原 v1 形态)+ **Server酱·Turbo版**(`/api/sctapi/{key}.send`, 原 v2 形态); 返回格式照抄原版, 失败也返回 HTTP 200; 存储常量 serverchan_v1/v2 不变(显示名仅前端映射)
 - TOTP 二维码: 后端 `totp.Generate` + key.Image(200,200) → PNG base64 data URL, 前端 `<img>` 直显, 无二维码库依赖
 
 ## COMMANDS
@@ -124,6 +131,10 @@ git push github --tags   # 例: git tag v1.0.0 && git push github v1.0.0
 git push cloud deploy
 ssh mpcloud "sudo bash /opt/axmipusher-src/deploy/cloud-build-deploy.sh"
 
+# 一键部署脚本(从 GitHub Releases 拉最新安装包, 新机器快速部署)
+curl -sSL https://raw.githubusercontent.com/AXmishell/AXmiPusher/main/deploy/one-click-install.sh | sudo bash
+#   可调: INSTALL_DIR(默认 /opt/axmipusher) / KEEP_CONFIG=1(保留旧配置升级)
+
 # 打包可分发安装包(可选, 仍本地打包)
 powershell -File deploy/pack-install.ps1    # 输出 dist-install/axmipusher-install-*.tar.gz
 
@@ -135,7 +146,7 @@ powershell -File scripts/hook-receiver.ps1 # :9090 → data/hook.log
 ## NOTES
 - Go 1.25(go.mod) vs Dockerfile golang:1.26 存在版本偏差
 - 两个前端 package.json 的 name 分别为 "axmipusher-user"(user)/"axmipusher-admin"(admin), 复制粘贴遗留已修正(勿据此判断应用)
-- handler/rand.go 命名误导: 实为共享助手(CurrentUser/randomHex)
+- handler/rand.go 命名误导: 实为共享助手(CurrentUser/randRead); 原 randomHex 已删, 随机路径统一走 config.GenerateRandomAdminPath
 - internal/install/ 为空死目录; migrations/ 空(生产 PG 建议补版本化迁移)
 - 数据库队列重启不丢消息: 在途 SENDING 消息由租约回收(ReapStale)超时复位重试
 - git remote: `cloud`(云 bare repo) + `origin`(Gitee 备份) + `github`(GitHub AXmishell/AXmiPusher, 默认分支 main, push 用 `deploy:main`); ~/.ssh/config 有 `mpcloud` 别名(86.53.111.210:55244, 走 SOCKS5 代理推送)

@@ -10,7 +10,7 @@
 
 ## 核心语义
 - **消息状态机**: PENDING→SENDING→SUCCESS/FAILED/RETRYING/DEAD(store.go:10, 61-64); 状态常量实值在 internal/models(MsgPending 等), 本包内直接写字符串字面量
-- **认领 ClaimPending**(sqlite.go:178-217): 方言分支 — postgres 用 SELECT ... FOR UPDATE SKIP LOCKED 行锁 + 逐条 UPDATE(事务内, 锁持有到提交, 防并发重复认领); sqlite 单写连接(db 包 SetMaxOpenConns(1))天然串行, 无需锁
+- **认领 ClaimPending**(sqlite.go:178-217): 方言分支(claimQuery) — postgres 用 SELECT ... FOR UPDATE SKIP LOCKED 行锁; **mysql 5.7 无 SKIP LOCKED → 退化普通 FOR UPDATE**(并发 worker 锁上排队, 按最新已提交状态重读, 已认领行自然跳过); sqlite 单写连接(db 包 SetMaxOpenConns(1))天然串行, 无需锁; SQL 形状由 sqlite_test.go TestPGClaimShape/TestMySQLClaimShape 断言
 - **回收 ReapStale**(sqlite.go:219-236): 单条 UPDATE ... CASE WHEN 原子完成 — retry_count+1, 超 maxAttempts 置 DEAD("认领超限(数据库队列)")否则复位 PENDING; updated_at 过期判断用 GORM 参数绑定传 time.Time(与写入格式一致), 不做字符串拼接
 - **索引契约**: (status, updated_at) 联合索引 idx_status_updated 专供轮询/租约回收(sqlite.go:21, 26); idx_tenant_created 供租户分页; request_id/channel/recipient 各带单列索引
 - **事件流**: message_events 表记录 created|sending|success|failed|retry|dead(SaveEvent, store.go:30)

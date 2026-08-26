@@ -25,6 +25,7 @@ HTTP 层。Gin 引擎装配、路由、中间件、handler。依赖注入中心 
 | `/admin/*`(stats/users/reviews/plans/payments/audit-logs/settings...) | RequireAdminAuth | 管理员登录态, **无平台角色门禁**(已由管理员体系取代) |
 | `/admin/admins` | RequireAdminAuth + RequireAdminRole(super_admin) | 管理员管理(仅超管) |
 
+- 用户管理(handler/admin.go): GET /users(列表, current/pageSize) + **POST /users(新增, email/username/password 必填, 唯一性 409)** + PUT /users/:id(编辑邮箱/用户名/重置密码, 邮箱唯一排除自身) + PUT /users/:id/status(启禁用); 平台管理员不可编辑/禁用
 - 兼容层 `serverchan.RegisterRoutes(r, a)` 在 api 包注册(公开, 走兼容 key 鉴权)
 - 支付回调公开且**不经过 RequireInstalled**: `/api/v1/pay/notify`、`/api/v1/pay/return`
 - 最后调 `registerWebRoutes`, 挂前端静态托管
@@ -56,14 +57,14 @@ HTTP 层。Gin 引擎装配、路由、中间件、handler。依赖注入中心 
 
 ## 静态托管(web.go)
 
-- 管理员后台: 显式前缀路由 `/{admin_path}/*filepath`(唯一前缀, 无路由树冲突)
+- 管理员后台: 显式前缀路由 `/{admin_path}/*filepath`(唯一前缀, 无路由树冲突); handler 用 `app.AdminSPAHandler` **动态校验当前配置路径 — 旧前缀直接 404 废除(不重定向)**
 - 用户中心: **NoRoute 兜底**, 静态文件优先, 否则回退 index.html
-- NoRoute 内排除 `/api`、`/install`、`/{admin_path}/`, 这些路径返回真实 404
+- NoRoute 内排除 `/api`、`/install`(真实 404); **旧后台前缀兜底: 顶层段为 8-32 位纯字母数字且非当前后台路径且非用户中心 SPA 路由(register/messages/channels/settings 白名单)→ 404**(覆盖重启后旧前缀丢失显式路由落入用户中心 SPA 的漏洞)
 - 历史教训: Gin 根级 catch-all(如 `/*filepath`)会吞掉 `/api` 路由, 故用户中心必须走 NoRoute
 
 ## 注意
 
-- `handler/rand.go` 命名误导: 实为共享助手 `CurrentUser(c)` 与 `randomHex(n)`, 非随机数业务
+- `handler/rand.go` 命名误导: 实为共享助手 `CurrentUser(c)` 与 `randRead`; 原 randomHex 已删, 随机后台路径统一走 config.GenerateRandomAdminPath
 - `PayNotify` 必须 `c.Request.ParseForm()` 后再读 `PostForm`, 否则字段为空
 - 列表接口对齐 AntD Pro 分页: query 参数 `current`/`pageSize`(默认 20), 响应含 `total`
 - 新增路由: 先在 `biz` 下挂组, 再选鉴权中间件, 勿把公开路由放进业务组

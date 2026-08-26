@@ -12,6 +12,7 @@
 deploy/
 ├── build-release.sh      # Release 安装包构建(Linux amd64, GitHub Actions 推 v* tag 时调用; 本机 bash 亦可跑)
 ├── cloud-build-deploy.sh # 云端编译部署(2026-08 起主流程): pull → go/npm build → 替换 → 重启
+├── one-click-install.sh  # 一键部署(2026-08): 解析 GitHub latest → 下载安装包 → 停旧服务 → 清旧配置 → install.sh --mode binary
 ├── build-artifacts.ps1   # 本地构建 api 二进制 + 双前端 dist → context/(仅安装包打包用, 常规部署不再需要)
 ├── pack-install.ps1      # 本地打包可分发安装包 → dist-install/*.tar.gz(Windows 专用, 等价 build-release.sh)
 ├── install.sh            # 服务器一键安装(docker|binary 双模式, --port/--dir)
@@ -29,6 +30,7 @@ deploy/
 | 云端编译部署 | cloud-build-deploy.sh | 主流程: 本地 push → ssh 执行 |
 | 打包安装包(本地) | pack-install.ps1 | 输出 axmipusher-install-{ver}.tar.gz(需先 build-artifacts.ps1) |
 | 一键安装 | install.sh | binary 模式自动带起 axmipusher-web(19876/19877, 二进制在 web/web-linux) |
+| 一键部署(新机器) | one-click-install.sh | curl 管道执行: `curl -sSL https://raw.githubusercontent.com/AXmishell/AXmiPusher/main/deploy/one-click-install.sh \| sudo bash`; 可调 INSTALL_DIR / KEEP_CONFIG=1 |
 | 清库重装 | cloud-build-deploy.sh 尾部注释 | 停服 → drop/create 库 → 删 install.lock → 向导 |
 
 ## CONVENTIONS
@@ -71,6 +73,9 @@ powershell -File deploy/build-artifacts.ps1 -AdminPath b322aa9602150d0c; powersh
 
 # 云端清库重装(大版本重构时)
 #   停服 → drop/create axmipusher 库 → 删 install.lock → 启动 → 走 /install 向导
+
+# 一键部署脚本(新机器, root 执行; 环境变量: INSTALL_DIR / KEEP_CONFIG)
+curl -sSL https://raw.githubusercontent.com/AXmishell/AXmiPusher/main/deploy/one-click-install.sh | sudo bash
 ```
 
 ## NOTES

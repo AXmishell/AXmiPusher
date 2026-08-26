@@ -5,8 +5,9 @@
 ## 文件地图
 
 - `app.go`: `App` 结构体 + `New` + `Build`(按配置装配全部组件)+ `Reinit`(安装后重建)+ `setupRedis` + `StartConsumer` + `Close`
-- `install.go`: 安装向导 5 步路由 + 全部 handler + helpers(351 行, 全仓最大文件)
-- `embed.go` / `install.html`: 安装向导前端页面(go:embed)
+- `install.go`: 安装向导 5 步路由 + 全部 handler + helpers(全仓最大文件)
+- `install.html`: 安装向导前端页面(go:embed)
+- `admin_spa.go`: `AdminSPAHandler`(管理后台 SPA 托管, 旧前缀 404 废除)
 
 ## 核心模式
 
@@ -24,13 +25,14 @@
 
 ### Router 注入
 - `App.Router` 由 `cmd/api` 在 `NewRouter` 后注入(`a.Router = router`)
-- 用途: 轮换 admin 路径时 `RegisterAdminSPA(newPath, adminDist)` 动态注册新前缀路由(否则新路径 404)
+- 用途: 轮换/自定义 admin 路径时 `RegisterAdminSPA(newPath, adminDist)` 动态注册新前缀路由(否则新路径 404); 安装向导 init 后也调用一次 — **安装完成即可访问后台, 无需重启**
 
 ## 安装向导(install.go)
 
 - 路由: `POST /api/install/{status, env-check, init, admin, complete}` + `GET /install`(HTML)
 - 状态机: `config.IsInstalled()`(install.lock 存在)门控; 未安装时业务 API 503
-- `init` 流程: 生成 JWT 密钥 → **admin path 从 admin dist index.html 解析**(DetectAdminBase, 与构建 base 一致, 否则管理后台 404)→ 写 config.yaml → `Reinit` → seedPlans(默认 3 套餐)
+- `init` 流程: 生成 JWT 密钥 → **admin path: 用户可自定义(经 config.ValidateAdminPath 校验 8-32 位/保留字), 留空则 config.GenerateRandomAdminPath 随机 16 位**(旧固定回退 b322aa9602150d0c 已废弃)→ 写 config.yaml → `Reinit` → seedPlans(默认 3 套餐)→ RegisterAdminSPA 即时注册
+- env-check 支持三方言: sqlite / postgres(pgx 拨号)/ **mysql(go-sql-driver 拨号, 5.7)**
 - `admin`: 创建 admins 表首条超管(super_admin, 邮箱/昵称/密码≥8, bcrypt); admins 表已有数据则 Conflict
 - `complete`: `config.MarkInstalled()` 写 install.lock
 - 老数据迁移: db 包 `migrateLegacyAdmins` 启动时把 users.role=platform_admin 迁入 admins(超管)后从 users 删除(仅旧版升级)
@@ -40,14 +42,15 @@
 
 | 函数 | 作用 | 注意 |
 |------|------|------|
-| `DetectAdminBase(distDir)` | 从 admin dist index.html 正则解析 base 路径 | 相对 base('./') 构建时匹配不到 → 回退默认 |
-| `RegisterAdminSPA(prefix, distDir)` | 动态注册 admin 前缀 SPA 静态托管 | Router 为 nil 时跳过(仅 api 进程注入) |
+| `AdminSPAHandler(a, distDir)` | 管理后台 SPA 托管 handler(admin_spa.go) | 请求前缀 ≠ 当前 RandomPath → **404 废除**(不重定向); 旧前缀路由保留但校验不通过 |
+| `DetectAdminBase(distDir)` | 从 admin dist index.html 正则解析 base 路径 | 相对 base('./') 构建时匹配不到 → 回退随机生成 |
+| `RegisterAdminSPA(prefix, distDir)` | 动态注册 admin 前缀 SPA 托管 | 内部用 AdminSPAHandler; Router 为 nil 时跳过(仅 api 进程注入) |
 | `Reinit(cfg)` | 安装后重建组件 | 保留 DBQueue 实例, 勿重建 |
 
 ## 已踩坑
 
 - Reinit 保留 DBQueue 实例(消费者已订阅, 重建 → 无人消费); DBQueue 认领依赖惰性 getStore, 切库后取最新实例
-- admin path 必须与构建 base 一致(DetectAdminBase 兜底, 否则管理后台 404)
-- 轮换路径后必须 RegisterAdminSPA 新前缀(仅改 config 不够, 路由树不自动更新)
+- 后台路径**必须唯一**: 新路径不得等于当前路径(轮换接口校验); 旧路径 404 废除, 不得恢复 302/301 重定向(旧地址可被传播利用)
+- 轮换路径后必须 RegisterAdminSPA 新前缀(仅改 config 不够, 路由树不自动更新); 重启后旧前缀由 api 包 NoRoute 长前缀 404 兜底
 - 安装向导用 `randomHex(32)` 生成 JWT 密钥, 勿硬编码/复用
 - 旧库启动清理(migrateLegacySchema, db 包): users 表残留 tenant_id/name 列会致新代码插入 NOT NULL 失败, 启动自动 DROP(SQLite 先删索引); 已踩坑
