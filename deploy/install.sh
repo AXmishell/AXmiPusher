@@ -80,8 +80,9 @@ EOF
   echo "[binary] API 服务已启动 (systemd: messagepusher, :$PORT)"
 
   # 可选: 前端独立端口托管程序(用户中心/管理后台/API 反代)。
-  if [[ -x "$INSTALL_DIR/web" ]]; then
-    chmod +x "$INSTALL_DIR/web"
+  # 说明: web 是目录, 二进制位于其内部的 web-linux(由 build-release.sh 按此布局打包)。
+  if [[ -x "$INSTALL_DIR/web/web-linux" ]]; then
+    chmod +x "$INSTALL_DIR/web/web-linux"
     cat > /etc/systemd/system/messagepusher-web.service <<EOF
 [Unit]
 Description=MessagePusher Web Frontend
@@ -90,7 +91,7 @@ After=network.target messagepusher.service
 [Service]
 Type=simple
 WorkingDirectory=$INSTALL_DIR
-ExecStart=$INSTALL_DIR/web
+ExecStart=$INSTALL_DIR/web/web-linux
 Restart=always
 RestartSec=3
 Environment=MP_USER_PORT=19876

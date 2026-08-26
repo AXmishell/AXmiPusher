@@ -17,7 +17,7 @@ AXmiPusher/
 │   └── admin/       # 管理后台 (同上, :19877 生产 / :5174 dev, 随机路径 base)
 ├── deploy/          # 安装分发(install.sh/pack-install.ps1) + 云端编译部署脚本 + context/(安装包产物, 不入库)
 ├── scripts/         # 本地工具: hook-receiver.ps1(:9090) / mock-smtp.ps1(:2525)
-├── .github/         # GitHub Actions CI(编译检查: go build/vet/test + 双前端 build)
+├── .github/         # GitHub Actions: ci.yml(编译检查) + release.yml(推 v* tag 自动发布安装包)
 ├── migrations/      # 空目录(建表走 GORM AutoMigrate, 无版本化迁移)
 └── openapi.yaml     # API 规范
 ```
@@ -109,6 +109,15 @@ go test ./...                # 本地验证(仅开发期; 正式验证走云端�
 
 # CI 编译检查(GitHub Actions, push main/deploy 自动跑)
 #   .github/workflows/ci.yml: backend(go build/vet/test) + frontend(matrix user/admin npm run build)
+
+# 发布 Release(推 tag 触发 Actions 构建并发布安装包到 GitHub Releases)
+git push github --tags   # 例: git tag v1.0.0 && git push github v1.0.0
+# 版本号约定(语义化版本 SemVer): v<大版本>.<新功能>.<bug修复>
+#   1 = 大版本更新(破坏性变更/架构调整, 如重构数据库驱动)
+#   2 = 新增功能(向后兼容的新特性)
+#   3 = bug 修复(缺陷修正, 无新功能)
+#   示例: v1.2.3 = 第 1 个大版本的 2 个新功能 + 3 个 bug 修复
+#   tag 推送到 github 后由 .github/workflows/release.yml 自动构建并发布(包名/目录名/VERSION 文件均取 tag 名去 v 前缀)
 
 # 云端编译部署流(2026-08 起, 取代本地构建产物)
 git push cloud deploy

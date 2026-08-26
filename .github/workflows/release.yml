@@ -1,0 +1,36 @@
+name: Release
+
+# 发布安装包: 推送 v* tag(如 v1.0.0)时自动构建 Linux amd64 单安装包并发布到 GitHub Releases
+# 调用 deploy/build-release.sh 完成构建(go 交叉编译 + 双前端 npm build + tar 打包)
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: 构建并发布安装包
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: 构建安装包
+        # GITHUB_REF_NAME = v1.0.0, 去掉前导 v 得 1.0.0
+        run: bash deploy/build-release.sh -v "${GITHUB_REF_NAME#v}"
+
+      - name: 发布到 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist-install/messagepusher-install-*.tar.gz
+          generate_release_notes: true

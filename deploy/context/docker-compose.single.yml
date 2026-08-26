@@ -1,0 +1,37 @@
+# MessagePusher 单机 Docker 编排(单机部署: SQLite + 内置数据库轮询消费者 + Redis)。
+# 部署目录: /opt/messagepusher-docker
+#   appdata/  ← 数据目录(由部署脚本从原部署迁移: config.yaml/install.lock/data/)
+#   .env      ← REDIS_PASSWORD / MP_ADMIN_PATH
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD:?请在 .env 设置 REDIS_PASSWORD} --appendonly yes
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      MP_PORT: "8080"
+      MP_REDIS_ADDR: redis:6379
+      MP_REDIS_PASSWORD: ${REDIS_PASSWORD}
+      MP_REDIS_FALLBACK: "true"
+      MP_USER_DIST: /app/web/user
+      MP_ADMIN_DIST: /app/web/admin
+      # 必须与镜像内 admin 前端构建时的 base 一致。
+      MP_ADMIN_PATH: ${MP_ADMIN_PATH:-b322aa9602150d0c}
+    volumes:
+      - ./appdata/config.yaml:/app/config.yaml
+      - ./appdata/install.lock:/app/install.lock
+      - ./appdata/data:/app/data
+    ports:
+      - "8080:8080"
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+volumes:
+  redisdata:
