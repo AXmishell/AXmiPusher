@@ -91,9 +91,11 @@ end
 return current <= tonumber(ARGV[2]) and 1 or 0
 `
 
-// redisCmdable 限定最小命令集(便于测试注入, 与 go-redis Eval 签名一致)。
+// redisCmdable 限定最小命令集(便于测试注入, 与 go-redis 签名一致)。
 type redisCmdable interface {
 	Eval(ctx context.Context, script string, keys []string, args ...interface{}) *redis.Cmd
+	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd
+	Exists(ctx context.Context, keys ...string) *redis.IntCmd
 }
 
 // RedisRateLimiter Redis 固定窗口限流器(分布式)。

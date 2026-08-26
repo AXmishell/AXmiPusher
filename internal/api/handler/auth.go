@@ -19,6 +19,7 @@ type registerRequest struct {
 	Password        string `json:"password" binding:"required"`
 	ConfirmPassword string `json:"confirm_password"` // 确认密码(可选, 提供时校验一致)
 	Nickname        string `json:"nickname"`         // 用户名(可选, 默认 email)
+	Code            string `json:"code" binding:"required"` // 邮箱验证码
 }
 
 // Register 开放注册。
@@ -33,8 +34,16 @@ func Register(a *app.App) gin.HandlerFunc {
 			response.BadRequest(c, "两次输入的密码不一致")
 			return
 		}
-		user, err := a.Auth.Register(req.Email, req.Password, req.Nickname)
+		user, err := a.Auth.Register(req.Email, req.Password, req.Nickname, req.Code)
 		if err != nil {
+			if errors.Is(err, service.ErrBadCode) {
+				response.BadRequest(c, "验证码错误或已过期")
+				return
+			}
+			if errors.Is(err, service.ErrEmailExists) {
+				response.Conflict(c, "该邮箱已注册")
+				return
+			}
 			response.Conflict(c, err.Error())
 			return
 		}
@@ -47,6 +56,36 @@ func Register(a *app.App) gin.HandlerFunc {
 			"token": token,
 			"user":  user,
 		})
+	}
+}
+
+// sendCodeRequest 发送注册验证码请求。
+type sendCodeRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+// SendRegisterCode 发送注册邮箱验证码。
+func SendRegisterCode(a *app.App) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req sendCodeRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.BadRequest(c, "参数错误: "+err.Error())
+			return
+		}
+		if err := a.Auth.SendRegisterCode(req.Email); err != nil {
+			switch {
+			case errors.Is(err, service.ErrEmailExists):
+				response.Conflict(c, "该邮箱已注册")
+			case errors.Is(err, service.ErrCodeTooFrequent):
+				response.RateLimited(c, "发送过于频繁, 请稍后再试")
+			case errors.Is(err, service.ErrSMTPNotConfigured):
+				response.ServerError(c, "系统邮件未配置, 请联系管理员")
+			default:
+				response.ServerError(c, "发送失败: "+err.Error())
+			}
+			return
+		}
+		response.OK(c, gin.H{"ok": true})
 	}
 }
 

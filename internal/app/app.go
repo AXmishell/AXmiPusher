@@ -82,11 +82,12 @@ func (a *App) Build() error {
 	)
 
 	// 服务。
-	a.Auth = service.NewAuthService(gdb, cfg)
+	// 注意: SettingsService 必须先于 AuthService 创建(AuthService 依赖它读系统邮件 SMTP)。
+	a.Settings = service.NewSettingsService(gdb)
+	a.Auth = service.NewAuthService(gdb, cfg, a.Settings, service.NewMemoryCodeStore())
 	a.Limiter = service.NewMemoryRateLimiter(cfg.RateLimit.PerMinute)
 	a.Messages = service.NewMessageService(gdb, a.Store, a.Queue, a.Limiter, cfg.RateLimit.Enabled)
 	a.Templates = service.NewTemplateService(gdb)
-	a.Settings = service.NewSettingsService(gdb)
 	a.Pay = service.NewPaymentService(gdb, a.Settings, cfg.App.BaseURL)
 	a.Batch = service.NewBatchService(gdb, a.Messages)
 
@@ -105,7 +106,7 @@ func (a *App) Build() error {
 	a.Registry = channel.NewRegistry()
 	a.Registry.SetBreaker(breaker)
 	a.Registry.Register(channel.NewWebhookSender(gdb))
-	a.Registry.Register(channel.NewEmailSender(gdb, a.Settings))
+	a.Registry.Register(channel.NewEmailSender(gdb))
 	a.Registry.Register(channel.NewAPNsSender(gdb))
 	a.Registry.Register(channel.NewFCMSender(gdb))
 	a.Registry.Register(channel.NewInAppSender(gdb))
@@ -149,6 +150,8 @@ func (a *App) setupRedis() error {
 	a.Limiter = service.NewRedisRateLimiter(rdb, a.Cfg.RateLimit.PerMinute)
 	a.Messages.SetLimiter(a.Limiter)
 	a.Messages.SetRedisCache(rdb)
+	// 验证码存储切换到 Redis(多实例共享)。
+	a.Auth.SetCodeStore(service.NewRedisCodeStore(rdb))
 	fmt.Printf("[redis] 已连接 %s, 分布式限流/熔断/幂等加速启用\n", cfg.Addr)
 	return nil
 }

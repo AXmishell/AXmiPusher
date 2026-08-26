@@ -54,6 +54,7 @@ func NewRouter(a *app.App) *gin.Engine {
 		auth := biz.Group("/auth")
 		{
 			auth.POST("/register", handler.Register(a))
+			auth.POST("/register/send-code", handler.SendRegisterCode(a))
 			auth.POST("/login", handler.Login(a))
 			auth.POST("/login/totp", handler.LoginTotp(a))
 			auth.GET("/me", middleware.RequireAuth(getAuth), handler.Me(a))
@@ -123,7 +124,7 @@ func NewRouter(a *app.App) *gin.Engine {
 			pay.GET("/orders/:id", handler.QueryPayOrder(a))
 		}
 
-		// 渠道配置(登录态, 租户覆盖)。
+		// 通道配置(登录态, 租户覆盖)。
 		channels := biz.Group("/channels", middleware.RequireAuth(getAuth))
 		{
 			channels.GET("", handler.ListChannels(a))
@@ -172,9 +173,6 @@ func NewRouter(a *app.App) *gin.Engine {
 				authed.POST("/users", handler.CreateUser(a))
 				authed.PUT("/users/:id/status", handler.SetUserStatus(a))
 				authed.PUT("/users/:id", handler.UpdateUser(a))
-				authed.GET("/templates/reviews", handler.ListReviews(a))
-				authed.POST("/templates/:templateId/versions/:versionId/approve", handler.ApproveReview(a))
-				authed.POST("/templates/:templateId/versions/:versionId/reject", handler.RejectReview(a))
 				authed.GET("/plans", handler.ListPlans(a))
 				authed.POST("/plans", handler.CreatePlan(a))
 				authed.PUT("/plans/:id", handler.UpdatePlan(a))

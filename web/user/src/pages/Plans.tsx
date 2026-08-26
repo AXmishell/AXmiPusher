@@ -42,6 +42,13 @@ export default function Plans() {
         method: 'POST',
         data: { plan_id: plan.id, type: 'alipay' },
       });
+      // 免费套餐: 后端已直接激活订阅(订单 status=paid 且无支付链接), 无需易支付。
+      if (d.order?.status === 'paid' && !d.pay_url) {
+        message.success(`「${plan.name}」已免费开通`);
+        setPaying(null);
+        await load();
+        return;
+      }
       setPayInfo(d);
     } catch { setPaying(null); }
   };
@@ -111,7 +118,7 @@ export default function Plans() {
                 onClick={() => createOrder(p)}
                 disabled={sub?.subscription?.plan_id === p.id}
               >
-                {sub?.subscription?.plan_id === p.id ? '当前套餐' : p.price === 0 ? '免费版' : '立即购买'}
+                {sub?.subscription?.plan_id === p.id ? '当前套餐' : p.price === 0 ? '免费开通' : '立即购买'}
               </Button>
             </Card>
           </Col>

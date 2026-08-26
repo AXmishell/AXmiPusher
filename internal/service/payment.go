@@ -56,7 +56,21 @@ func (s *PaymentService) LoadConfig() (*EpayConfig, error) {
 }
 
 // CreateOrder 创建支付订单, 返回订单与易支付跳转链接。
+// 免费套餐(price=0): 不依赖易支付, 直接激活订阅并返回"已支付"标记(无 pay_url)。
 func (s *PaymentService) CreateOrder(tenantID, planID uint64, payType string) (*models.PaymentOrder, string, error) {
+	var plan models.Plan
+	if err := s.db.First(&plan, "id = ? AND status = ?", planID, models.StatusActive).Error; err != nil {
+		return nil, "", ErrPlanInvalid
+	}
+	// 免费套餐: 直接激活订阅, 不创建支付订单、不要求易支付配置。
+	if plan.Price == 0 {
+		if err := s.db.Transaction(func(tx *gorm.DB) error {
+			return activateSubscription(tx, tenantID, planID, time.Now())
+		}); err != nil {
+			return nil, "", err
+		}
+		return &models.PaymentOrder{PlanID: planID, Amount: 0, Status: "paid", Type: "free"}, "", nil
+	}
 	cfg, err := s.LoadConfig()
 	if err != nil {
 		return nil, "", err
@@ -64,11 +78,6 @@ func (s *PaymentService) CreateOrder(tenantID, planID uint64, payType string) (*
 	if payType == "" {
 		payType = "alipay"
 	}
-	var plan models.Plan
-	if err := s.db.First(&plan, "id = ? AND status = ?", planID, models.StatusActive).Error; err != nil {
-		return nil, "", ErrPlanInvalid
-	}
-
 	order := &models.PaymentOrder{
 		TenantID:   tenantID,
 		PlanID:     planID,

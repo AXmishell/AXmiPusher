@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 
 	"axmipusher/internal/config"
 	"axmipusher/internal/models"
+	"axmipusher/internal/pkg/mail"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pquerna/otp"
@@ -24,11 +26,14 @@ import (
 
 // 业务错误。
 var (
-	ErrEmailExists   = errors.New("邮箱已注册")
-	ErrBadCredential = errors.New("邮箱或密码错误")
-	ErrUserDisabled  = errors.New("账号已被禁用")
-	ErrKeyExists     = errors.New("key 已存在")
-	ErrBadOldPass    = errors.New("旧密码不正确")
+	ErrEmailExists       = errors.New("邮箱已注册")
+	ErrBadCredential     = errors.New("邮箱或密码错误")
+	ErrUserDisabled      = errors.New("账号已被禁用")
+	ErrKeyExists         = errors.New("key 已存在")
+	ErrBadOldPass        = errors.New("旧密码不正确")
+	ErrBadCode           = errors.New("验证码错误或已过期")
+	ErrCodeTooFrequent   = errors.New("发送过于频繁, 请稍后再试")
+	ErrSMTPNotConfigured = errors.New("系统邮件(SMTP)未配置, 请联系管理员")
 )
 
 // jwtClaims JWT 载荷。
@@ -47,16 +52,25 @@ type AuthService struct {
 	tokenTTL  time.Duration
 	keyPrefix string
 	bindDir   string
+	settings  *SettingsService // 系统邮件(SMTP)等平台设置。
+	codes     CodeStore        // 注册邮箱验证码存储(内存/Redis)。
 }
 
 // NewAuthService 创建认证服务。
-func NewAuthService(db *gorm.DB, cfg *config.Config) *AuthService {
+func NewAuthService(db *gorm.DB, cfg *config.Config, settings *SettingsService, codes CodeStore) *AuthService {
 	return &AuthService{
 		db:        db,
 		jwtSecret: []byte(cfg.Auth.JWTSecret),
 		tokenTTL:  cfg.Auth.TokenTTL,
 		keyPrefix: cfg.Auth.APIKeyPrefix,
+		settings:  settings,
+		codes:     codes,
 	}
+}
+
+// SetCodeStore 替换验证码存储(Redis 接线时调用)。
+func (s *AuthService) SetCodeStore(c CodeStore) {
+	s.codes = c
 }
 
 // defaultIfEmpty 空值回退。
@@ -67,14 +81,23 @@ func defaultIfEmpty(v, fallback string) string {
 	return v
 }
 
-// Register 开放注册: 直接创建用户(名称/昵称已合并为用户名 nickname, 空则默认 email)。
-func (s *AuthService) Register(email, password, nickname string) (*models.User, error) {
+// Register 开放注册: 先校验邮箱验证码(一次性), 再直接创建用户(名称/昵称已合并为用户名 nickname, 空则默认 email)。
+func (s *AuthService) Register(email, password, nickname, code string) (*models.User, error) {
 	if err := validatePassword(password); err != nil {
 		return nil, err
 	}
 
+	// 校验邮箱验证码: 不匹配或已过期/已用, 拒绝建号。
+	ok, err := s.codes.Consume("regcode:"+email, code)
+	if err != nil {
+		return nil, err
+	}
+	if !ok {
+		return nil, ErrBadCode
+	}
+
 	user := models.User{}
-	err := s.db.Transaction(func(tx *gorm.DB) error {
+	err = s.db.Transaction(func(tx *gorm.DB) error {
 		var count int64
 		if err := tx.Model(&models.User{}).Where("email = ?", email).Count(&count).Error; err != nil {
 			return err
@@ -99,6 +122,56 @@ func (s *AuthService) Register(email, password, nickname string) (*models.User, 
 		return nil, err
 	}
 	return &user, nil
+}
+
+// SendRegisterCode 发送注册邮箱验证码(含邮箱查重与 60s 发送冷却)。
+func (s *AuthService) SendRegisterCode(email string) error {
+	// 1. 邮箱查重: 已注册不再发送。
+	var count int64
+	if err := s.db.Model(&models.User{}).Where("email = ?", email).Count(&count).Error; err != nil {
+		return err
+	}
+	if count > 0 {
+		return ErrEmailExists
+	}
+
+	// 2. 发送冷却: 60s 内不得重复发送。
+	exists, err := s.codes.Exists("regcooldown:" + email)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return ErrCodeTooFrequent
+	}
+
+	// 3. 生成 6 位数字验证码(首位可为 0)。
+	buf := make([]byte, 4)
+	if _, err := rand.Read(buf); err != nil {
+		return err
+	}
+	n := binary.BigEndian.Uint32(buf) % 1000000
+	code := fmt.Sprintf("%06d", n)
+
+	// 4. 先落存储: 验证码 5 分钟有效 + 60s 冷却。
+	if err := s.codes.Set("regcode:"+email, code, 5*time.Minute); err != nil {
+		return err
+	}
+	if err := s.codes.Set("regcooldown:"+email, "1", 60*time.Second); err != nil {
+		return err
+	}
+
+	// 5. 读系统邮件(SMTP)配置。
+	var cfg mail.Config
+	if err := s.settings.GetJSON("smtp", &cfg); err != nil {
+		return fmt.Errorf("读取系统邮件配置失败: %w", err)
+	}
+	if cfg.Host == "" {
+		return ErrSMTPNotConfigured
+	}
+
+	// 6. 发送验证码邮件。
+	return mail.Send(cfg, []string{email}, "注册验证码",
+		"您的注册验证码是: "+code+", 5 分钟内有效。若非本人操作请忽略。")
 }
 
 // Login 登录(记录最近一次登录 IP)。
