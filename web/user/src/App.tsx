@@ -6,7 +6,6 @@ import Dashboard from './pages/Dashboard';
 import Messages from './pages/Messages';
 import SendMessage from './pages/SendMessage';
 import ApiKeys from './pages/ApiKeys';
-import Callbacks from './pages/Callbacks';
 import Plans from './pages/Plans';
 import Channels from './pages/Channels';
 import Inbox from './pages/Inbox';
@@ -25,7 +24,6 @@ export default function App() {
           <Route path="send" element={<SendMessage />} />
           <Route path="api-keys" element={<ApiKeys />} />
           <Route path="compat-keys" element={<Navigate to="/api-keys" replace />} />
-          <Route path="callbacks" element={<Callbacks />} />
           <Route path="plans" element={<Plans />} />
           <Route path="channels" element={<Channels />} />
           <Route path="inbox" element={<Inbox />} />

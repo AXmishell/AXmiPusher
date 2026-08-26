@@ -14,7 +14,7 @@ import (
 // ChannelMeta 渠道元信息(前端展示用)。
 var ChannelMeta = []gin.H{
 	{"type": "webhook", "name": "Webhook 回调", "desc": "POST 到业务方回调地址", "configured": true},
-	{"type": "email", "name": "邮件", "desc": "SMTP 发送(平台默认或租户自定义)", "configured": false},
+	{"type": "email", "name": "邮件", "desc": "SMTP 发送(需在通道配置中设置 SMTP 与默认收件人)", "configured": false},
 	{"type": "apns", "name": "APNs (iOS)", "desc": "Apple 推送, 需 Team ID/Key ID/Bundle ID/.p8", "configured": false},
 	{"type": "fcm", "name": "FCM (Android)", "desc": "Firebase 推送, 需服务账号 JSON", "configured": false},
 	{"type": "inapp", "name": "站内信", "desc": "平台内收件箱, 无需外部配置", "configured": true},
@@ -96,7 +96,7 @@ func ChannelHealth(a *app.App) gin.HandlerFunc {
 	}
 }
 
-// channelConfigRequest 渠道配置请求(JSON 原文透传)。
+// channelConfigRequest 通道配置请求(JSON 原文透传)。
 type channelConfigRequest struct {
 	Config json.RawMessage `json:"config" binding:"required"`
 }

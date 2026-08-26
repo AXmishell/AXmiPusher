@@ -19,7 +19,7 @@ import (
 // 业务错误。
 var (
 	ErrRateLimited     = errors.New("请求频率超限")
-	ErrTemplateMissing = errors.New("模板不存在或不可用")
+	ErrTemplateMissing = errors.New("模板不存在")
 	ErrChannelInvalid  = errors.New("渠道不可用")
 	ErrEmptyRecipients = errors.New("收件人不能为空")
 	ErrDuplicate       = errors.New("重复请求")
@@ -128,8 +128,9 @@ func (s *MessageService) Send(ctx context.Context, tenantID uint64, req *SendReq
 	var template *models.Template
 	if req.TemplateCode != "" {
 		var t models.Template
-		if err := s.db.Where("tenant_id = ? AND code = ? AND status = ?",
-			tenantID, req.TemplateCode, models.StatusActive).First(&t).Error; err != nil {
+		// 审核已移除: 不再校验 status, 按 tenant_id + code 查, 查不到即模板缺失。
+		if err := s.db.Where("tenant_id = ? AND code = ?",
+			tenantID, req.TemplateCode).First(&t).Error; err != nil {
 			return nil, ErrTemplateMissing
 		}
 		template = &t
@@ -158,7 +159,8 @@ func (s *MessageService) Send(ctx context.Context, tenantID uint64, req *SendReq
 	// ④ 逐收件人创建消息记录并入队。
 	count := 0
 	for _, r := range req.Recipients {
-		if strings.TrimSpace(r.Target) == "" {
+		// email 渠道允许空收件人: 发送时由邮件渠道回退配置的默认收件人(留空 = 用默认)。
+		if strings.TrimSpace(r.Target) == "" && channel != "email" {
 			continue
 		}
 		content := req.Content
