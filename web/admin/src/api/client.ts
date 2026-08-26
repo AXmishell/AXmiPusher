@@ -89,8 +89,11 @@ client.interceptors.response.use(
     const body = error.response?.data;
     if (status === 401) {
       localStorage.removeItem('mp_admin_token');
-      // 跳转登录页(带上部署前缀 /{admin_path}/)。
-      if (!location.pathname.endsWith('/login')) location.href = `${import.meta.env.BASE_URL}login`;
+      // 跳转登录页(动态取当前前缀, 支持轮换 admin 路径)。
+      if (!location.pathname.endsWith('/login')) {
+        const seg = location.pathname.split('/').filter(Boolean)[0];
+        location.href = `${seg ? '/' + seg : ''}/login`;
+      }
     }
     notify(body?.message || error.message || '请求失败');
     return Promise.reject(error);

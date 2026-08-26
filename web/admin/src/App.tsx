@@ -11,8 +11,11 @@ import AuditLogs from './pages/AuditLogs';
 import Settings from './pages/Settings';
 
 export default function App() {
+  // 动态取当前路径第一个段作为 basename, 支持轮换 admin 路径后无需重新构建。
+  const seg = window.location.pathname.split('/').filter(Boolean)[0];
+  const basename = seg ? `/${seg}` : '/';
   return (
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    <BrowserRouter basename={basename}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<MainLayout />}>

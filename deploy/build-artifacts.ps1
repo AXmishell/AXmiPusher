@@ -20,9 +20,9 @@ Push-Location (Join-Path $root "web\user")
 npm run build
 Pop-Location
 Push-Location (Join-Path $root "web\admin")
-$env:MP_ADMIN_BASE = "/$AdminPath/"
+# 注意: 不再设置 MP_ADMIN_BASE —— admin 构建用相对 base('./'),
+# 资源与路由相对当前前缀, 支持任意部署路径与运行期轮换 admin 路径。
 npm run build
-Remove-Item Env:MP_ADMIN_BASE
 Pop-Location
 
 Write-Host "[3/3] 组装到 deploy/context/..."
