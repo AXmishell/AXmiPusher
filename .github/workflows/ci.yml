@@ -1,0 +1,53 @@
+name: CI
+
+# 编译检查: push main/deploy 或 PR 到 main 时自动执行
+# 后端 go build+vet+test, 前端双应用 tsc+vite build(与云端构建一致)
+on:
+  push:
+    branches: [main, deploy]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: 后端 Go 检查
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: go build
+        run: go build ./...
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go test
+        run: go test ./...
+
+  frontend:
+    name: 前端编译检查(${{ matrix.app }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [user, admin]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: npm install
+        working-directory: web/${{ matrix.app }}
+        # 项目无 lockfile 提交, 显式用官方 registry(项目 .npmrc 固定 npmmirror 仅国内更快)
+        run: npm install --no-audit --no-fund --registry=https://registry.npmjs.org
+
+      - name: npm run build(tsc -b + vite build)
+        working-directory: web/${{ matrix.app }}
+        run: npm run build
