@@ -121,7 +121,6 @@ func NewRouter(a *app.App) *gin.Engine {
 			pay.GET("/subscription", handler.GetSubscription(a))
 			pay.POST("/orders", handler.CreatePayOrder(a))
 			pay.GET("/orders/:id", handler.QueryPayOrder(a))
-			pay.POST("/orders/:id/simulate", handler.SimulatePay(a)) // 本地调试用
 		}
 
 		// 渠道配置(登录态, 租户覆盖)。
@@ -205,6 +204,9 @@ func NewRouter(a *app.App) *gin.Engine {
 
 	// 生产模式前端静态托管(根 → 用户中心, /{admin_path}/ → 管理后台)。
 	registerWebRoutes(r, a.Cfg.Web.UserDist, a.Cfg.Web.AdminDist, a.Cfg.Admin.RandomPath)
+
+	// 调试路由(模拟支付等): 仅 debug 构建注册, 默认构建为空桩。
+	registerDebugRoutes(r, a)
 
 	return r
 }

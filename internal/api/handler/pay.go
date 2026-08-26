@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
-	"time"
 
 	"messagepusher/internal/app"
 	"messagepusher/internal/models"
@@ -131,42 +130,3 @@ func PayReturn(a *app.App) gin.HandlerFunc {
 	}
 }
 
-// SimulatePay 开发调试: 模拟易支付回调(仅本地模式)。
-func SimulatePay(a *app.App) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		if a.Cfg.App.Env != "local" {
-			response.Forbidden(c, "仅本地环境可用")
-			return
-		}
-		id, err := strconv.ParseUint(c.Param("id"), 10, 64)
-		if err != nil {
-			response.BadRequest(c, "无效的订单 ID")
-			return
-		}
-		order, err := a.Pay.QueryOrder(resolveTenantID(c), id)
-		if err != nil {
-			response.NotFound(c, "订单不存在")
-			return
-		}
-		cfg, err := a.Pay.LoadConfig()
-		if err != nil {
-			response.BadRequest(c, "易支付未配置")
-			return
-		}
-		params := map[string]string{
-			"pid":          cfg.PID,
-			"trade_no":     "MOCK" + strconv.FormatInt(time.Now().UnixMilli(), 10),
-			"out_trade_no": order.OutTradeNo,
-			"type":         order.Type,
-			"name":         "模拟支付",
-			"money":        strconv.FormatFloat(order.Amount, 'f', 2, 64),
-			"trade_status": "TRADE_SUCCESS",
-		}
-		params["sign"] = service.SignParams(params, cfg.Key)
-		if err := a.Pay.HandleNotify(params); err != nil {
-			response.ServerError(c, "模拟回调失败: "+err.Error())
-			return
-		}
-		response.OK(c, gin.H{"ok": true, "out_trade_no": order.OutTradeNo})
-	}
-}
