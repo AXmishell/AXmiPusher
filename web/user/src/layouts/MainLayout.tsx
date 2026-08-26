@@ -54,7 +54,7 @@ export default function MainLayout() {
 
   return (
     <ProLayout
-      title="MessagePusher"
+      title="AXmiPusher"
       logo={<SendOutlined style={{ fontSize: 22, color: '#1e40af' }} />}
       location={{ pathname: location.pathname }}
       route={{

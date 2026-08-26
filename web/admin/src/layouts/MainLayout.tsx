@@ -62,7 +62,7 @@ export default function MainLayout() {
 
   return (
     <ProLayout
-      title="MessagePusher 管理后台"
+      title="AXmiPusher 管理后台"
       logo={<SafetyCertificateOutlined style={{ fontSize: 22, color: '#7c3aed' }} />}
       location={{ pathname: location.pathname }}
       route={{

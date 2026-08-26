@@ -1,4 +1,4 @@
-# MessagePusher 消息推送平台
+# AXmiPusher 消息推送平台
 
 统一受理消息 → 队列 → 多渠道发送(Webhook / Email / APNs / FCM / 站内信)→ 回执统计的一站式消息推送平台。
 Go 后端(单仓库双进程)+ 双独立 React 前端(用户中心 / 管理后台),支持本地单机模式与生产分布式部署。

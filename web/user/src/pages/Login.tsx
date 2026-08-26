@@ -32,7 +32,7 @@ export default function Login() {
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <SendOutlined style={{ fontSize: 40, color: '#1e40af' }} />
           <Typography.Title level={3} style={{ marginTop: 12, marginBottom: 4 }}>
-            MessagePusher
+            AXmiPusher
           </Typography.Title>
           <Typography.Text type="secondary">消息推送平台 · 用户中心</Typography.Text>
         </div>

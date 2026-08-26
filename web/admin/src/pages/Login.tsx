@@ -28,7 +28,7 @@ export default function Login() {
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <SafetyCertificateOutlined style={{ fontSize: 40, color: '#7c3aed' }} />
           <Typography.Title level={3} style={{ marginTop: 12, marginBottom: 4 }}>
-            MessagePusher 管理后台
+            AXmiPusher 管理后台
           </Typography.Title>
           <Typography.Text type="secondary">平台管理员专属入口</Typography.Text>
         </div>
