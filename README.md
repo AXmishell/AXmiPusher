@@ -20,7 +20,7 @@ Go 后端(单仓库, api 单进程内置数据库轮询消费者)+ 双独立 Rea
 |---|---|
 | 后端 | Go 1.25 + Gin + GORM,数据库驱动(PostgreSQL / SQLite);Redis 可选(限流/熔断/幂等) |
 | 前端 | Vite + React 18 + TypeScript + Ant Design 5(ProComponents),两个独立应用 |
-| 部署 | systemd / Docker Compose 双模式;云端编译工作流(git push → 云端 go/npm build) |
+| 部署 | systemd / Docker Compose 双模式;安装包分发(GitHub Releases → install.sh 一键安装) |
 
 ## 项目结构
 
@@ -36,34 +36,52 @@ AXmiPusher/
 └── openapi.yaml     # API 规范
 ```
 
-## 快速开始(SQLite 单机)
+## 部署(安装包分发)
+
+从 GitHub Releases **latest** 自动解析最新版本, 在云端终端一键部署(binary 模式, systemd)。
+
+> 以下命令均在**云端服务器终端**(root)执行, 与本地开发机无依赖。
 
 ```bash
-# 后端(SQLite + 内置数据库轮询消费者)
-go run ./cmd/api                  # :8080, 首次访问 /install 走安装向导
+# 1. 下载最新安装包(latest 自动解析版本号, 无需手改版本)
+cd /opt
+VER=$(curl -sI -o /dev/null -w '%{redirect_url}' https://github.com/AXmishell/AXmiPusher/releases/latest | sed 's|.*/||')
+curl -sL -o axmipusher-install-${VER#v}.tar.gz \
+  "https://github.com/AXmishell/AXmiPusher/releases/download/$VER/axmipusher-install-${VER#v}.tar.gz"
 
-# 前端(可选, 生产由主程序托管 dist)
-cd web/user && npm run dev        # :5173
-cd web/admin && npm run dev       # :5174
+# 2. 停旧服务 + 清理旧配置(全新安装时)
+systemctl stop axmipusher axmipusher-web 2>/dev/null
+rm -f /opt/axmipusher/config.yaml /opt/axmipusher/install.lock
 
-# 测试
-go test ./...
+# 3. 解压 + 一键安装(自动生成 systemd 服务并启动)
+tar -xzf axmipusher-install-*.tar.gz
+cd axmipusher-install-*/
+bash install.sh --mode binary --dir /opt/axmipusher
+
+# 4. 浏览器访问 http://<IP>:8080/install 走安装向导
+#    (环境检查 → 配置数据库/Redis → 创建平台超管 → 完成)
+#    ⚠️ 向导完成后必须重启服务, 管理后台随机路径路由才会注册(v1.0.1 起生效):
+systemctl restart axmipusher
+
+# 5. 验证
+curl http://127.0.0.1:8080/api/v1/health        # {"installed":true}
+curl -I http://127.0.0.1:8080/<admin随机路径>/  # 返回管理后台
 ```
 
-## 部署(云端编译工作流)
+部署后入口(端口固化):
 
-本地仅编写代码,产物在云端编译:
+| 服务 | systemd 单元 | 端口 | 说明 |
+|---|---|---|---|
+| api(主程序) | `axmipusher` | 8080 | 统一入口: 用户中心 `/` + 管理后台 `/{随机路径}/` |
+| 前端托管(cmd/web) | `axmipusher-web` | 19876 / 19877 | 独立端口托管用户中心 / 管理后台 |
 
-```bash
-git push cloud deploy
-ssh mpcloud "sudo bash /opt/axmipusher-src/deploy/cloud-build-deploy.sh"
-```
-
-详见 [`deploy/AGENTS.md`](deploy/AGENTS.md)。也可本地打包可分发安装包:
-
-```bash
-powershell -File deploy/pack-install.ps1    # 输出 dist-install/axmipusher-install-*.tar.gz
-```
+> **全新安装建议重置数据**(云端终端): PostgreSQL 重建库 + `CREATE EXTENSION pgcrypto`, Redis `FLUSHALL`:
+> ```bash
+> sudo -u postgres psql -c 'DROP DATABASE IF EXISTS axmipusher;' -c 'CREATE DATABASE axmipusher OWNER mp;'
+> sudo -u postgres psql -d axmipusher -c 'CREATE EXTENSION IF NOT EXISTS pgcrypto;'
+> redis-cli -a '<Redis密码>' --no-auth-warning FLUSHALL
+> ```
+> 也可本地打包安装包:`powershell -File deploy/pack-install.ps1` → 输出 `dist-install/axmipusher-install-*.tar.gz`。
 
 ## 账号体系
 
