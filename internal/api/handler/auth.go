@@ -15,9 +15,10 @@ import (
 
 // registerRequest 注册请求。
 type registerRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
-	Nickname string `json:"nickname"` // 用户名(可选, 默认 email)
+	Email           string `json:"email" binding:"required,email"`
+	Password        string `json:"password" binding:"required"`
+	ConfirmPassword string `json:"confirm_password"` // 确认密码(可选, 提供时校验一致)
+	Nickname        string `json:"nickname"`         // 用户名(可选, 默认 email)
 }
 
 // Register 开放注册。
@@ -26,6 +27,10 @@ func Register(a *app.App) gin.HandlerFunc {
 		var req registerRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
 			response.BadRequest(c, "参数错误: "+err.Error())
+			return
+		}
+		if req.ConfirmPassword != "" && req.ConfirmPassword != req.Password {
+			response.BadRequest(c, "两次输入的密码不一致")
 			return
 		}
 		user, err := a.Auth.Register(req.Email, req.Password, req.Nickname)

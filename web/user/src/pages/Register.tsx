@@ -11,8 +11,11 @@ export default function Register() {
   const onFinish = async (values: { email: string; password: string; confirm: string; nickname: string }) => {
     setLoading(true);
     try {
-      const { confirm, ...payload } = values;
-      const d = await request<{ token: string }>({ url: '/auth/register', method: 'POST', data: payload });
+      const d = await request<{ token: string }>({
+        url: '/auth/register',
+        method: 'POST',
+        data: { email: values.email, password: values.password, confirm_password: values.confirm, nickname: values.nickname },
+      });
       localStorage.setItem('mp_token', d.token);
       message.success('注册成功，已自动登录');
       navigate('/', { replace: true });
