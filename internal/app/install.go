@@ -348,6 +348,26 @@ func DetectAdminBase(distDir string) string {
 	return string(m[1])
 }
 
+// RegisterAdminSPA 动态注册 admin 前缀下的 SPA 静态托管(轮换路径后调用)。
+// 命中文件返回文件, 否则回退 index.html。
+func (a *App) RegisterAdminSPA(prefix, distDir string) {
+	if a.Router == nil || prefix == "" || distDir == "" {
+		return
+	}
+	routePath := "/" + strings.Trim(prefix, "/") + "/*filepath"
+	a.Router.GET(routePath, func(c *gin.Context) {
+		p := c.Param("filepath")
+		if p == "" || p == "/" {
+			p = "/"
+		}
+		full := filepath.Join(distDir, filepath.Clean(strings.TrimPrefix(p, "/")))
+		if info, err := os.Stat(full); err != nil || info.IsDir() {
+			full = filepath.Join(distDir, "index.html")
+		}
+		c.File(full)
+	})
+}
+
 // seedPlans 写入默认套餐。
 func seedPlans(gdb *gorm.DB) error {
 	var count int64

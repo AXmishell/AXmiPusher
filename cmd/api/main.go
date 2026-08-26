@@ -31,6 +31,7 @@ func main() {
 
 	api.SetInstalledChecker(config.IsInstalled)
 	router := api.NewRouter(a)
+	a.Router = router
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

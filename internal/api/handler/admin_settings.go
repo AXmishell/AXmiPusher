@@ -102,6 +102,8 @@ func RotateAdminPath(a *app.App) gin.HandlerFunc {
 				return
 			}
 		}
+		// 动态注册新前缀路由(轮换后立即生效)。
+		a.RegisterAdminSPA(newPath, a.Cfg.Web.AdminDist)
 		a.Cfg.Admin.RandomPath = newPath
 		if err := a.Cfg.Save(); err != nil {
 			response.ServerError(c, "保存配置失败")

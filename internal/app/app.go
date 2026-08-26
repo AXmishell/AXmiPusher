@@ -15,6 +15,7 @@ import (
 	"messagepusher/internal/store"
 	"messagepusher/internal/worker"
 
+	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
@@ -36,6 +37,10 @@ type App struct {
 	Redis     *redis.Client
 	// RedisMode 是否使用 Redis 分布式实现(限流/熔断)。
 	RedisMode bool
+	// Router 由 api 进程注入, 供轮换 admin 路径时动态注册新前缀路由。
+	Router interface {
+		GET(relativePath string, handlers ...gin.HandlerFunc) gin.IRoutes
+	}
 }
 
 // New 创建并构建应用。
