@@ -1,6 +1,5 @@
 # MessagePusher 单机部署(物理机 Docker Compose)。
-# 生产模式: PostgreSQL + ClickHouse + Kafka + Redis。
-# 本地模式: 将 MP_DB_TYPE=sqlite MP_STORE_TYPE=sqlite MP_QUEUE_TYPE=inprocess 并只启动 api 即可。
+# 统一数据库驱动: PostgreSQL + Redis, 消息队列为数据库轮询(内置消费者)。
 
 services:
   # ---- 基础设施 ----
@@ -19,32 +18,11 @@ services:
       retries: 5
     restart: unless-stopped
 
-  clickhouse:
-    image: clickhouse/clickhouse-server:24.8-alpine
-    volumes:
-      - chdata:/var/lib/clickhouse
-    restart: unless-stopped
-
   redis:
     image: redis:7-alpine
     command: redis-server --appendonly yes
     volumes:
       - redisdata:/data
-    restart: unless-stopped
-
-  kafka:
-    image: bitnami/kafka:3.7
-    environment:
-      KAFKA_CFG_NODE_ID: 1
-      KAFKA_CFG_PROCESS_ROLES: broker,controller
-      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
-      ALLOW_PLAINTEXT_LISTENER: "yes"
-    volumes:
-      - kafkadata:/bitnami/kafka
     restart: unless-stopped
 
   # ---- 应用 ----
@@ -54,17 +32,12 @@ services:
       dockerfile: Dockerfile
     command: ["api"]
     environment:
-      MP_ENV: production
       MP_DB_TYPE: postgres
       MP_DB_HOST: postgres
       MP_DB_PORT: "5432"
       MP_DB_USER: mp
       MP_DB_PASSWORD: ${MP_DB_PASSWORD:-mp_secret_2026}
       MP_DB_NAME: messagepusher
-      MP_QUEUE_TYPE: kafka
-      MP_KAFKA_BROKERS: kafka:9092
-      MP_STORE_TYPE: clickhouse
-      MP_CH_DSN: clickhouse://default@clickhouse:9000/messagepusher
       MP_REDIS_ADDR: redis:6379
       MP_REDIS_FALLBACK: "true"
       MP_JWT_SECRET: ${MP_JWT_SECRET:?请在 .env 中设置 MP_JWT_SECRET}
@@ -75,38 +48,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      kafka:
-        condition: service_started
-    restart: unless-stopped
-
-  worker:
-    build:
-      context: ..
-      dockerfile: Dockerfile
-    command: ["worker"]
-    environment:
-      MP_ENV: production
-      MP_DB_TYPE: postgres
-      MP_DB_HOST: postgres
-      MP_DB_PORT: "5432"
-      MP_DB_USER: mp
-      MP_DB_PASSWORD: ${MP_DB_PASSWORD:-mp_secret_2026}
-      MP_DB_NAME: messagepusher
-      MP_QUEUE_TYPE: kafka
-      MP_KAFKA_BROKERS: kafka:9092
-      MP_STORE_TYPE: clickhouse
-      MP_CH_DSN: clickhouse://default@clickhouse:9000/messagepusher
-      MP_REDIS_ADDR: redis:6379
-      MP_REDIS_FALLBACK: "true"
-    depends_on:
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_started
     restart: unless-stopped
 
 volumes:
   pgdata:
-  chdata:
   redisdata:
-  kafkadata:

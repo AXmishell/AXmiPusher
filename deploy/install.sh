@@ -62,7 +62,6 @@ WorkingDirectory=$INSTALL_DIR
 ExecStart=$INSTALL_DIR/api
 Restart=always
 RestartSec=3
-Environment=MP_ENV=production
 Environment=MP_PORT=$PORT
 Environment=MP_USER_DIST=$INSTALL_DIR/web/user
 Environment=MP_ADMIN_DIST=$INSTALL_DIR/web/admin
@@ -143,7 +142,7 @@ echo "=============================================="
 echo " MessagePusher 安装就绪!"
 echo ""
 echo " 浏览器打开: http://${IP:-<服务器IP>}:$PORT/install"
-echo " 按向导完成: 数据库/存储/队列配置 → 创建管理员"
+echo " 按向导完成配置 → 创建管理员"
 echo ""
 echo " 安装后入口:"
 echo "   用户中心   http://${IP:-<服务器IP>}:$PORT/"

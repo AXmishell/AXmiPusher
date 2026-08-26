@@ -48,7 +48,7 @@ MessagePusher 安装包 v$version
 3. 浏览器访问 http://<IP>:<端口>/install 完成 Web 安装向导
 
 说明:
-- binary 模式: 单进程, SQLite + 进程内队列 + 可选 Redis, systemd 托管
+- binary 模式: 单进程, SQLite + 内置数据库轮询队列 + 可选 Redis, systemd 托管
 - docker 模式: 容器编排(api + redis), 自带 .env 生成
 - 管理后台为随机路径, 安装完成后在向导页展示
 - 凭据不落盘明文: 仅存于服务器本地
