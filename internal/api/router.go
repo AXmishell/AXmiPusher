@@ -55,10 +55,14 @@ func NewRouter(a *app.App) *gin.Engine {
 		{
 			auth.POST("/register", handler.Register(a))
 			auth.POST("/login", handler.Login(a))
+			auth.POST("/login/totp", handler.LoginTotp(a))
 			auth.GET("/me", middleware.RequireAuth(getAuth), handler.Me(a))
 			auth.PUT("/profile", middleware.RequireAuth(getAuth), handler.UpdateProfile(a))
 			auth.PUT("/email", middleware.RequireAuth(getAuth), handler.ChangeEmail(a))
 			auth.POST("/change-password", middleware.RequireAuth(getAuth), handler.ChangePassword(a))
+			auth.POST("/totp/setup", middleware.RequireAuth(getAuth), handler.SetupTotp(a))
+			auth.POST("/totp/confirm", middleware.RequireAuth(getAuth), handler.ConfirmTotp(a))
+			auth.POST("/totp/disable", middleware.RequireAuth(getAuth), handler.DisableTotp(a))
 		}
 
 		// API Key 管理(登录态)。
@@ -152,10 +156,14 @@ func NewRouter(a *app.App) *gin.Engine {
 		{
 			// 管理员认证(登录公开, 其余需管理员 JWT)。
 			admin.POST("/auth/login", handler.AdminLogin(a))
+			admin.POST("/auth/login/totp", handler.AdminLoginTotp(a))
 			admin.GET("/auth/me", middleware.RequireAdminAuth(getAdminAuth), handler.AdminMe(a))
 			admin.PUT("/auth/profile", middleware.RequireAdminAuth(getAdminAuth), handler.AdminUpdateProfile(a))
 			admin.PUT("/auth/email", middleware.RequireAdminAuth(getAdminAuth), handler.AdminChangeEmail(a))
 			admin.POST("/auth/change-password", middleware.RequireAdminAuth(getAdminAuth), handler.AdminChangePassword(a))
+			admin.POST("/auth/totp/setup", middleware.RequireAdminAuth(getAdminAuth), handler.AdminSetupTotp(a))
+			admin.POST("/auth/totp/confirm", middleware.RequireAdminAuth(getAdminAuth), handler.AdminConfirmTotp(a))
+			admin.POST("/auth/totp/disable", middleware.RequireAdminAuth(getAdminAuth), handler.AdminDisableTotp(a))
 
 			// 需管理员登录的管理端点。
 			authed := admin.Group("", middleware.RequireAdminAuth(getAdminAuth))

@@ -2,17 +2,22 @@
 package service
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"image/png"
 	"time"
 
 	"messagepusher/internal/config"
 	"messagepusher/internal/models"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/pquerna/otp"
+	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -107,6 +112,10 @@ func (s *AuthService) Login(email, password, ip string) (*models.User, error) {
 	}
 	if user.Status != models.StatusActive {
 		return nil, ErrUserDisabled
+	}
+	// 已启用 TOTP: 密码阶段通过, 不记录登录态, 等待第二步验证码。
+	if user.TotpEnabled {
+		return &user, nil
 	}
 	now := time.Now()
 	s.db.Model(&user).Updates(map[string]interface{}{"last_login_at": &now, "last_login_ip": ip})
@@ -247,6 +256,10 @@ func (s *AuthService) AdminLogin(email, password, ip string) (*models.Admin, err
 	}
 	if admin.Status != models.StatusActive {
 		return nil, ErrUserDisabled
+	}
+	// 已启用 TOTP: 密码阶段通过, 不记录登录态, 等待第二步验证码。
+	if admin.TotpEnabled {
+		return &admin, nil
 	}
 	now := time.Now()
 	s.db.Model(&admin).Updates(map[string]interface{}{"last_login_at": &now, "last_login_ip": ip})
@@ -493,4 +506,175 @@ func generateKey(prefix string) string {
 	buf := make([]byte, 24)
 	rand.Read(buf)
 	return prefix + hex.EncodeToString(buf)
+}
+
+// --- TOTP 两步验证 ---
+
+// totpPendingTTL 密码阶段通过后的临时凭证有效期。
+const totpPendingTTL = 5 * time.Minute
+
+// CreateTotpPendingToken 签发 TOTP 第二阶段临时凭证(短 TTL, kind=totp_pending)。
+func (s *AuthService) CreateTotpPendingToken(id uint64, isAdmin bool) (string, error) {
+	role := "user"
+	if isAdmin {
+		role = "admin"
+	}
+	claims := jwtClaims{
+		UserID: id,
+		Role:   role,
+		Kind:   "totp_pending",
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(totpPendingTTL)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    "messagepusher",
+			Subject:   fmt.Sprintf("%d", id),
+		},
+	}
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(s.jwtSecret)
+}
+
+// ParseTotpPendingToken 解析 TOTP 第二阶段临时凭证, 返回实体 ID 与类型。
+func (s *AuthService) ParseTotpPendingToken(tokenStr string) (id uint64, isAdmin bool, err error) {
+	claims, err := s.parseJWT(tokenStr)
+	if err != nil {
+		return 0, false, err
+	}
+	if claims.Kind != "totp_pending" {
+		return 0, false, fmt.Errorf("凭证类型错误")
+	}
+	return claims.UserID, claims.Role == "admin", nil
+}
+
+// totpEntity 读取 TOTP 相关字段(按类型查 users/admins 表)。
+func (s *AuthService) totpEntity(id uint64, isAdmin bool) (email, secret string, enabled bool, err error) {
+	if isAdmin {
+		var a models.Admin
+		if err = s.db.First(&a, id).Error; err != nil {
+			return
+		}
+		return a.Email, a.TotpSecret, a.TotpEnabled, nil
+	}
+	var u models.User
+	if err = s.db.First(&u, id).Error; err != nil {
+		return
+	}
+	return u.Email, u.TotpSecret, u.TotpEnabled, nil
+}
+
+// saveTotp 写 TOTP 密钥与启用状态(未启用时 secret 为待确认值)。
+func (s *AuthService) saveTotp(id uint64, isAdmin bool, secret string, enabled bool) error {
+	if isAdmin {
+		return s.db.Model(&models.Admin{}).Where("id = ?", id).
+			Updates(map[string]interface{}{"totp_secret": secret, "totp_enabled": enabled}).Error
+	}
+	return s.db.Model(&models.User{}).Where("id = ?", id).
+		Updates(map[string]interface{}{"totp_secret": secret, "totp_enabled": enabled}).Error
+}
+
+// SetupTotp 生成并保存 TOTP 密钥(未启用), 返回 secret / otpauth URL / 二维码 data URL。
+func (s *AuthService) SetupTotp(id uint64, isAdmin bool) (secret, otpauthURL, qrDataURL string, err error) {
+	email, _, enabled, err := s.totpEntity(id, isAdmin)
+	if err != nil {
+		return
+	}
+	if enabled {
+		return "", "", "", errors.New("两步验证已启用, 请先关闭")
+	}
+	key, err := totp.Generate(totp.GenerateOpts{
+		Issuer:      "AXmiPusher",
+		AccountName: email,
+		Period:      30,
+		SecretSize:  20,
+		Digits:      otp.DigitsSix,
+		Algorithm:   otp.AlgorithmSHA1,
+	})
+	if err != nil {
+		return
+	}
+	if err = s.saveTotp(id, isAdmin, key.Secret(), false); err != nil {
+		return
+	}
+	// 二维码 PNG → data URL(前端 <img> 直接展示, 零前端依赖)。
+	img, err := key.Image(200, 200)
+	if err != nil {
+		return
+	}
+	var buf bytes.Buffer
+	if err = png.Encode(&buf, img); err != nil {
+		return
+	}
+	return key.Secret(), key.URL(), "data:image/png;base64," + base64.StdEncoding.EncodeToString(buf.Bytes()), nil
+}
+
+// ConfirmTotp 用验证码确认启用 TOTP。
+func (s *AuthService) ConfirmTotp(id uint64, isAdmin bool, code string) error {
+	_, secret, enabled, err := s.totpEntity(id, isAdmin)
+	if err != nil {
+		return err
+	}
+	if enabled {
+		return errors.New("两步验证已启用")
+	}
+	if secret == "" {
+		return errors.New("请先获取密钥")
+	}
+	if !totp.Validate(code, secret) {
+		return errors.New("验证码无效")
+	}
+	return s.saveTotp(id, isAdmin, secret, true)
+}
+
+// DisableTotp 用当前验证码关闭 TOTP。
+func (s *AuthService) DisableTotp(id uint64, isAdmin bool, code string) error {
+	_, secret, enabled, err := s.totpEntity(id, isAdmin)
+	if err != nil {
+		return err
+	}
+	if !enabled {
+		return errors.New("两步验证未启用")
+	}
+	if !totp.Validate(code, secret) {
+		return errors.New("验证码无效")
+	}
+	return s.saveTotp(id, isAdmin, "", false)
+}
+
+// UserLoginTotp 用户登录第二步: 校验 TOTP 验证码并记录登录态。
+func (s *AuthService) UserLoginTotp(id uint64, code, ip string) (*models.User, error) {
+	var user models.User
+	if err := s.db.First(&user, id).Error; err != nil {
+		return nil, ErrBadCredential
+	}
+	if !user.TotpEnabled {
+		return nil, errors.New("两步验证未启用")
+	}
+	if !totp.Validate(code, user.TotpSecret) {
+		return nil, errors.New("验证码无效")
+	}
+	if user.Status != models.StatusActive {
+		return nil, ErrUserDisabled
+	}
+	now := time.Now()
+	s.db.Model(&user).Updates(map[string]interface{}{"last_login_at": &now, "last_login_ip": ip})
+	return &user, nil
+}
+
+// AdminLoginTotp 管理员登录第二步: 校验 TOTP 验证码并记录登录态。
+func (s *AuthService) AdminLoginTotp(id uint64, code, ip string) (*models.Admin, error) {
+	var admin models.Admin
+	if err := s.db.First(&admin, id).Error; err != nil {
+		return nil, ErrBadCredential
+	}
+	if !admin.TotpEnabled {
+		return nil, errors.New("两步验证未启用")
+	}
+	if !totp.Validate(code, admin.TotpSecret) {
+		return nil, errors.New("验证码无效")
+	}
+	if admin.Status != models.StatusActive {
+		return nil, ErrUserDisabled
+	}
+	now := time.Now()
+	s.db.Model(&admin).Updates(map[string]interface{}{"last_login_at": &now, "last_login_ip": ip})
+	return &admin, nil
 }

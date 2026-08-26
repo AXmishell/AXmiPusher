@@ -65,10 +65,15 @@ type User struct {
 	Status       string     `gorm:"size:16;not null;default:active" json:"status"`
 	QQ           string     `gorm:"size:32" json:"qq"`            // QQ 号码(账户设置, 可空非唯一)
 	LastLoginIP  string     `gorm:"size:64" json:"last_login_ip"` // 最近一次登录 IP
+	TotpSecret   string     `gorm:"size:128" json:"-"`            // TOTP 密钥(Base32, 不回传; 未启用时为待确认密钥)
+	TotpEnabled  bool       `gorm:"default:false" json:"totp_enabled"`
 	LastLoginAt  *time.Time `json:"last_login_at"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 }
+
+// TableName 用户表。
+func (User) TableName() string { return "users" }
 
 // Admin 平台管理员(独立于用户中心 users 表, 支持多管理员)。
 type Admin struct {
@@ -80,10 +85,15 @@ type Admin struct {
 	Status       string     `gorm:"size:16;not null;default:active" json:"status"`
 	QQ           string     `gorm:"size:32" json:"qq"`            // QQ 号码(账户设置, 可空非唯一)
 	LastLoginIP  string     `gorm:"size:64" json:"last_login_ip"` // 最近一次登录 IP
+	TotpSecret   string     `gorm:"size:128" json:"-"`            // TOTP 密钥(Base32, 不回传; 未启用时为待确认密钥)
+	TotpEnabled  bool       `gorm:"default:false" json:"totp_enabled"`
 	LastLoginAt  *time.Time `json:"last_login_at"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 }
+
+// TableName 管理员表。
+func (Admin) TableName() string { return "admins" }
 
 // APIKey 平台 API Key(服务端调用 /api/v1/* 使用)。
 type APIKey struct {

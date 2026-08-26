@@ -64,12 +64,119 @@ func Login(a *app.App) gin.HandlerFunc {
 			response.Unauthorized(c, "邮箱或密码错误")
 			return
 		}
+		// 已启用两步验证: 返回临时凭证, 前端进入验证码步骤。
+		if user.TotpEnabled {
+			pending, err := a.Auth.CreateTotpPendingToken(user.ID, false)
+			if err != nil {
+				response.ServerError(c, "签发验证凭证失败")
+				return
+			}
+			response.OK(c, gin.H{"need_totp": true, "totp_token": pending})
+			return
+		}
 		token, err := a.Auth.CreateToken(user)
 		if err != nil {
 			response.ServerError(c, "签发令牌失败")
 			return
 		}
 		response.OK(c, gin.H{"token": token, "user": user})
+	}
+}
+
+// totpLoginRequest 第二步登录请求。
+type totpLoginRequest struct {
+	TotpToken string `json:"totp_token" binding:"required"`
+	Code      string `json:"code" binding:"required"`
+}
+
+// LoginTotp 用户登录第二步: 校验 TOTP 验证码后签发正式 token。
+func LoginTotp(a *app.App) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req totpLoginRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.BadRequest(c, "参数错误")
+			return
+		}
+		id, isAdmin, err := a.Auth.ParseTotpPendingToken(req.TotpToken)
+		if err != nil || isAdmin {
+			response.Unauthorized(c, "验证凭证无效或已过期")
+			return
+		}
+		user, err := a.Auth.UserLoginTotp(id, req.Code, c.ClientIP())
+		if err != nil {
+			response.Unauthorized(c, err.Error())
+			return
+		}
+		token, err := a.Auth.CreateToken(user)
+		if err != nil {
+			response.ServerError(c, "签发令牌失败")
+			return
+		}
+		response.OK(c, gin.H{"token": token, "user": user})
+	}
+}
+
+// totpSetupRequest TOTP 确认/关闭请求。
+type totpSetupRequest struct {
+	Code string `json:"code" binding:"required"`
+}
+
+// SetupTotp 生成 TOTP 密钥与二维码(登录态, 仅未启用时)。
+func SetupTotp(a *app.App) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user := middleware.CurrentUser(c)
+		if user == nil {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		secret, otpauthURL, qrDataURL, err := a.Auth.SetupTotp(user.ID, false)
+		if err != nil {
+			response.BadRequest(c, err.Error())
+			return
+		}
+		response.OK(c, gin.H{"secret": secret, "otpauth_url": otpauthURL, "qr_data_url": qrDataURL})
+	}
+}
+
+// ConfirmTotp 用验证码确认启用两步验证。
+func ConfirmTotp(a *app.App) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user := middleware.CurrentUser(c)
+		if user == nil {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		var req totpSetupRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.BadRequest(c, "参数错误")
+			return
+		}
+		if err := a.Auth.ConfirmTotp(user.ID, false, req.Code); err != nil {
+			response.BadRequest(c, err.Error())
+			return
+		}
+		response.OK(c, gin.H{"totp_enabled": true})
+	}
+}
+
+// DisableTotp 用当前验证码关闭两步验证。
+func DisableTotp(a *app.App) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		user := middleware.CurrentUser(c)
+		if user == nil {
+			response.Unauthorized(c, "未登录")
+			return
+		}
+		var req totpSetupRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.BadRequest(c, "参数错误")
+			return
+		}
+		if err := a.Auth.DisableTotp(user.ID, false, req.Code); err != nil {
+			response.BadRequest(c, err.Error())
+			return
+		}
+		response.OK(c, gin.H{"totp_enabled": false})
 	}
 }
 

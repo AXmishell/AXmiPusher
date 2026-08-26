@@ -8,10 +8,11 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const onFinish = async (values: { email: string; password: string; nickname: string }) => {
+  const onFinish = async (values: { email: string; password: string; confirm: string; nickname: string }) => {
     setLoading(true);
     try {
-      const d = await request<{ token: string }>({ url: '/auth/register', method: 'POST', data: values });
+      const { confirm, ...payload } = values;
+      const d = await request<{ token: string }>({ url: '/auth/register', method: 'POST', data: payload });
       localStorage.setItem('mp_token', d.token);
       message.success('注册成功，已自动登录');
       navigate('/', { replace: true });
@@ -41,6 +42,22 @@ export default function Register() {
           </Form.Item>
           <Form.Item name="password" label="密码" rules={[{ required: true, min: 8, message: '密码至少 8 位' }]}>
             <Input.Password placeholder="至少 8 位" size="large" />
+          </Form.Item>
+          <Form.Item
+            name="confirm"
+            label="确认密码"
+            dependencies={['password']}
+            rules={[
+              { required: true, message: '请再次输入密码' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('password') === value) return Promise.resolve();
+                  return Promise.reject(new Error('两次输入的密码不一致'));
+                },
+              }),
+            ]}
+          >
+            <Input.Password placeholder="再次输入密码" size="large" />
           </Form.Item>
           <Button type="primary" htmlType="submit" block size="large" loading={loading}>
             注册

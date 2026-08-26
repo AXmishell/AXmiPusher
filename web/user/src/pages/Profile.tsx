@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Card, Descriptions, Form, Input, Button, message } from 'antd';
-import { UserOutlined, MailOutlined, LockOutlined, IdcardOutlined } from '@ant-design/icons';
+import { Card, Descriptions, Form, Input, Button, message, Alert, Typography } from 'antd';
+import { UserOutlined, MailOutlined, LockOutlined, IdcardOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { request, type User } from '../api/client';
 import ChangePasswordModal from '../components/ChangePasswordModal';
 
-// 账户设置页: 账户信息展示 + 用户名/昵称/QQ + 邮箱 + 密码修改。
+interface TotpSetupData {
+  secret: string;
+  otpauth_url: string;
+  qr_data_url: string;
+}
+
+// 账户设置页: 账户信息展示 + 用户名/QQ + 邮箱 + 密码 + 两步验证。
 export default function Profile() {
   const [user, setUser] = useState<User | null>(null);
   const [profileForm] = Form.useForm();
@@ -12,16 +18,23 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
   const [pwdOpen, setPwdOpen] = useState(false);
+  // TOTP 绑定状态。
+  const [totpSetup, setTotpSetup] = useState<TotpSetupData | null>(null);
+  const [totpBusy, setTotpBusy] = useState(false);
 
-  useEffect(() => {
+  const loadUser = () => {
     request<{ user: User }>({ url: '/auth/me', method: 'GET' })
       .then((d) => {
         setUser(d.user);
         profileForm.setFieldsValue({ nickname: d.user.nickname, qq: d.user.qq });
         emailForm.setFieldsValue({ email: d.user.email });
+        // 若已启用则收起绑定步骤。
+        if (d.user.totp_enabled) setTotpSetup(null);
       })
       .catch(() => {});
-  }, [profileForm, emailForm]);
+  };
+
+  useEffect(loadUser, [profileForm, emailForm]);
 
   // 保存用户名/QQ。
   const saveProfile = async (values: { nickname: string; qq?: string }) => {
@@ -49,6 +62,48 @@ export default function Profile() {
       /* 拦截器已提示 */
     } finally {
       setSavingEmail(false);
+    }
+  };
+
+  // 开启两步验证: 获取密钥与二维码。
+  const startTotpSetup = async () => {
+    setTotpBusy(true);
+    try {
+      const d = await request<TotpSetupData>({ url: '/auth/totp/setup', method: 'POST' });
+      setTotpSetup(d);
+    } catch {
+      /* 拦截器已提示 */
+    } finally {
+      setTotpBusy(false);
+    }
+  };
+
+  // 确认启用。
+  const confirmTotp = async (values: { code: string }) => {
+    setTotpBusy(true);
+    try {
+      await request({ url: '/auth/totp/confirm', method: 'POST', data: { code: values.code } });
+      message.success('两步验证已启用');
+      setTotpSetup(null);
+      loadUser();
+    } catch {
+      /* 拦截器已提示 */
+    } finally {
+      setTotpBusy(false);
+    }
+  };
+
+  // 关闭两步验证。
+  const disableTotp = async (values: { code: string }) => {
+    setTotpBusy(true);
+    try {
+      await request({ url: '/auth/totp/disable', method: 'POST', data: { code: values.code } });
+      message.success('两步验证已关闭');
+      loadUser();
+    } catch {
+      /* 拦截器已提示 */
+    } finally {
+      setTotpBusy(false);
     }
   };
 
@@ -98,6 +153,52 @@ export default function Profile() {
         <Button icon={<LockOutlined />} onClick={() => setPwdOpen(true)}>
           修改密码
         </Button>
+      </Card>
+
+      <Card title="两步验证(TOTP)" style={{ marginTop: 16 }}>
+        {user?.totp_enabled ? (
+          <div style={{ maxWidth: 480 }}>
+            <Alert type="success" showIcon message="两步验证已启用" description="登录时需要输入动态验证码, 增强账号安全。" style={{ marginBottom: 16 }} />
+            <Form layout="vertical" onFinish={disableTotp}>
+              <Form.Item name="code" label="输入当前验证码以关闭" rules={[{ required: true, len: 6, message: '请输入 6 位验证码' }]}>
+                <Input placeholder="6 位验证码" maxLength={6} prefix={<SafetyCertificateOutlined />} />
+              </Form.Item>
+              <Button danger htmlType="submit" loading={totpBusy}>
+                关闭两步验证
+              </Button>
+            </Form>
+          </div>
+        ) : totpSetup ? (
+          <div style={{ maxWidth: 480 }}>
+            <Typography.Paragraph type="secondary">
+              使用 Authenticator 类应用(如 Google Authenticator / Microsoft Authenticator)扫描二维码, 或手动输入密钥。
+            </Typography.Paragraph>
+            <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              <img src={totpSetup.qr_data_url} alt="TOTP 二维码" width={200} height={200} />
+            </div>
+            <Typography.Paragraph copyable={{ text: totpSetup.secret }} style={{ textAlign: 'center', marginBottom: 16 }}>
+              密钥: <Typography.Text code>{totpSetup.secret}</Typography.Text>
+            </Typography.Paragraph>
+            <Form layout="vertical" onFinish={confirmTotp}>
+              <Form.Item name="code" label="输入应用中的 6 位验证码确认" rules={[{ required: true, len: 6, message: '请输入 6 位验证码' }]}>
+                <Input placeholder="6 位验证码" maxLength={6} prefix={<SafetyCertificateOutlined />} />
+              </Form.Item>
+              <Button type="primary" htmlType="submit" loading={totpBusy}>
+                确认并启用
+              </Button>
+              <Button style={{ marginLeft: 8 }} onClick={() => setTotpSetup(null)}>
+                取消
+              </Button>
+            </Form>
+          </div>
+        ) : (
+          <div>
+            <Alert type="info" showIcon message="尚未启用" description="开启后, 登录时除密码外还需输入动态验证码。" style={{ marginBottom: 16 }} />
+            <Button icon={<SafetyCertificateOutlined />} onClick={startTotpSetup} loading={totpBusy}>
+              开启两步验证
+            </Button>
+          </div>
+        )}
       </Card>
 
       <ChangePasswordModal open={pwdOpen} onClose={() => setPwdOpen(false)} />

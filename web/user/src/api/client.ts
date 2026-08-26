@@ -20,6 +20,7 @@ export interface User {
   qq?: string;
   last_login_ip?: string;
   last_login_at?: string | null;
+  totp_enabled?: boolean;
   created_at: string;
 }
 
