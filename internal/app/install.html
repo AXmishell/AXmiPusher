@@ -81,7 +81,7 @@
       <div class="tip" style="font-size:14px; color:#475569; line-height:1.8;">
         本向导将引导您完成：<br>
         1. 检查运行环境<br>
-        2. 配置数据库 / 存储 / 队列<br>
+        2. 配置数据库<br>
         3. 创建平台管理员账号<br>
         4. 完成安装
       </div>
@@ -113,8 +113,8 @@
       <div class="field">
         <label>数据库类型</label>
         <select id="dbType" onchange="onDbTypeChange()">
-          <option value="sqlite">SQLite（本地 / 测试）</option>
-          <option value="postgres">PostgreSQL（生产）</option>
+          <option value="sqlite">SQLite</option>
+          <option value="postgres">PostgreSQL</option>
         </select>
       </div>
       <div class="field hidden" id="sqliteField">
@@ -131,28 +131,6 @@
           <div class="field"><label>用户</label><input id="pgUser" value="postgres"></div>
           <div class="field"><label>密码</label><input id="pgPassword" type="password"></div>
         </div>
-      </div>
-      <div class="field">
-        <label>消息记录存储</label>
-        <select id="storeType" onchange="onStoreTypeChange()">
-          <option value="sqlite">SQLite（与业务库同库，本地）</option>
-          <option value="clickhouse">ClickHouse（生产）</option>
-        </select>
-      </div>
-      <div class="field hidden" id="chField">
-        <label>ClickHouse DSN</label>
-        <input id="chDsn" placeholder="clickhouse://127.0.0.1:9000/messagepusher">
-      </div>
-      <div class="field">
-        <label>消息队列</label>
-        <select id="queueType" onchange="onQueueTypeChange()">
-          <option value="inprocess">进程内队列（本地）</option>
-          <option value="kafka">Kafka（生产）</option>
-        </select>
-      </div>
-      <div class="field hidden" id="kafkaField">
-        <label>Kafka Brokers（逗号分隔）</label>
-        <input id="kafkaBrokers" placeholder="127.0.0.1:9092">
       </div>
       <div class="row">
         <div class="field"><label>消息保留天数</label><input id="retentionDays" value="90" type="number"></div>
@@ -200,7 +178,7 @@
 </div>
 
 <script>
-const state = { adminPath: '', dbType: 'sqlite', storeType: 'sqlite', queueType: 'inprocess' };
+const state = { adminPath: '', dbType: 'sqlite' };
 let currentStep = 0;
 
 function next(step) {
@@ -222,14 +200,6 @@ function onDbTypeChange() {
   state.dbType = document.getElementById('dbType').value;
   document.getElementById('sqliteField').classList.toggle('hidden', state.dbType !== 'sqlite');
   document.getElementById('pgFields').classList.toggle('hidden', state.dbType !== 'postgres');
-}
-function onStoreTypeChange() {
-  state.storeType = document.getElementById('storeType').value;
-  document.getElementById('chField').classList.toggle('hidden', state.storeType !== 'clickhouse');
-}
-function onQueueTypeChange() {
-  state.queueType = document.getElementById('queueType').value;
-  document.getElementById('kafkaField').classList.toggle('hidden', state.queueType !== 'kafka');
 }
 function onRedisChange() {
   document.getElementById('redisFields').classList.toggle('hidden', !document.getElementById('redisAddr').value.trim());
@@ -257,11 +227,7 @@ async function runEnvCheck() {
     const req = {
       db_type: state.dbType,
       sqlite_path: document.getElementById('sqlitePath').value,
-      pg: pgInfo(),
-      store_type: state.storeType,
-      ch_dsn: document.getElementById('chDsn').value,
-      queue_type: state.queueType,
-      kafka_brokers: document.getElementById('kafkaBrokers').value
+      pg: pgInfo()
     };
     const data = await api('/api/install/env-check', req);
     box.innerHTML = '';
@@ -303,10 +269,6 @@ async function doInit() {
       db_type: state.dbType,
       sqlite_path: document.getElementById('sqlitePath').value,
       pg: pgInfo(),
-      store_type: state.storeType,
-      ch_dsn: document.getElementById('chDsn').value,
-      queue_type: state.queueType,
-      kafka_brokers: document.getElementById('kafkaBrokers').value,
       retention_days: parseInt(document.getElementById('retentionDays').value) || 90,
       redis_addr: document.getElementById('redisAddr').value.trim(),
       redis_password: document.getElementById('redisPassword').value,

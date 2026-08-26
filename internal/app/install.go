@@ -44,10 +44,6 @@ type envCheckRequest struct {
 	DBType     string `json:"db_type"`     // sqlite | postgres
 	SQLitePath string `json:"sqlite_path"` //
 	PG         pgInfo `json:"pg"`
-	StoreType  string `json:"store_type"` // sqlite | clickhouse
-	CHDSN      string `json:"ch_dsn"`
-	QueueType  string `json:"queue_type"` // inprocess | kafka
-	Brokers    string `json:"kafka_brokers"`
 }
 
 type pgInfo struct {
@@ -66,19 +62,15 @@ type checkItem struct {
 }
 
 type installInitRequest struct {
-	AppName       string  `json:"app_name"`
-	BaseURL       string  `json:"base_url"`
-	DBType        string  `json:"db_type"`
-	SQLitePath    string  `json:"sqlite_path"`
-	PG            pgInfo  `json:"pg"`
-	StoreType     string  `json:"store_type"`
-	CHDSN         string  `json:"ch_dsn"`
-	QueueType     string  `json:"queue_type"`
-	KafkaBrokers  string  `json:"kafka_brokers"`
-	RetentionDays int     `json:"retention_days"`
-	RedisAddr     string  `json:"redis_addr"`     // 可选
-	RedisPassword string  `json:"redis_password"` // 可选
-	RedisDB       int     `json:"redis_db"`       // 可选
+	AppName       string `json:"app_name"`
+	BaseURL       string `json:"base_url"`
+	DBType        string `json:"db_type"`
+	SQLitePath    string `json:"sqlite_path"`
+	PG            pgInfo `json:"pg"`
+	RetentionDays int    `json:"retention_days"`
+	RedisAddr     string `json:"redis_addr"`     // 可选
+	RedisPassword string `json:"redis_password"` // 可选
+	RedisDB       int    `json:"redis_db"`       // 可选
 }
 
 type installInitResponse struct {
@@ -121,21 +113,6 @@ func (a *App) handleEnvCheck(c *gin.Context) {
 		checks = append(checks, checkItem{Name: "数据库类型", OK: false, Msg: "未选择"})
 	default:
 		checks = append(checks, checkItem{Name: "数据库类型", OK: false, Msg: "不支持: " + req.DBType})
-	}
-
-	switch req.StoreType {
-	case "clickhouse":
-		if req.CHDSN == "" {
-			checks = append(checks, checkItem{Name: "ClickHouse DSN", OK: false, Msg: "未填写"})
-		} else {
-			checks = append(checks, checkItem{Name: "ClickHouse DSN", OK: true, Msg: "已填写(连通性在 M2 完善)"})
-		}
-	default:
-		checks = append(checks, checkItem{Name: "消息存储", OK: true, Msg: "SQLite(本地)"})
-	}
-
-	if req.QueueType == "kafka" && req.Brokers == "" {
-		checks = append(checks, checkItem{Name: "Kafka Brokers", OK: false, Msg: "未填写"})
 	}
 
 	response.OK(c, gin.H{"checks": checks})
@@ -183,14 +160,6 @@ func (a *App) handleInstallInit(c *gin.Context) {
 		cfg.Database.Name = req.PG.Name
 		cfg.Database.SSLMode = defaultIfEmpty(req.PG.SSLMode, "disable")
 	}
-	cfg.Store.Type = req.StoreType
-	if req.StoreType == "clickhouse" {
-		cfg.Store.DSN = req.CHDSN
-	}
-	cfg.Queue.Type = req.QueueType
-	if req.QueueType == "kafka" {
-		cfg.Queue.Brokers = splitBrokers(req.KafkaBrokers)
-	}
 	if req.RetentionDays > 0 {
 		cfg.Retention.MessageDays = req.RetentionDays
 	}
@@ -222,7 +191,7 @@ func (a *App) handleInstallInit(c *gin.Context) {
 	}
 	cfg.Admin.RandomPath = adminPath
 
-	// 校验 PG/Kafka 配置正确性(只做格式校验)。
+	// 校验 PG 配置正确性(只做格式校验)。
 	if cfg.Database.Type == "postgres" && (cfg.Database.Host == "" || cfg.Database.Name == "") {
 		response.BadRequest(c, "PostgreSQL 连接信息不完整")
 		return
@@ -395,15 +364,4 @@ func defaultIfEmpty(s, d string) string {
 		return d
 	}
 	return s
-}
-
-func splitBrokers(s string) []string {
-	var out []string
-	for _, p := range strings.Split(s, ",") {
-		p = strings.TrimSpace(p)
-		if p != "" {
-			out = append(out, p)
-		}
-	}
-	return out
 }
