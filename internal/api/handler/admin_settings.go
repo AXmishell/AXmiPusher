@@ -88,11 +88,19 @@ func UpdateSettings(a *app.App) gin.HandlerFunc {
 // RotateAdminPath 轮换管理员后台随机路径。
 func RotateAdminPath(a *app.App) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		oldPath := a.Cfg.Admin.RandomPath
 		// 生成新随机路径并写入配置(持久化)。
 		newPath, err := randomHex(8)
 		if err != nil {
 			response.ServerError(c, "生成随机路径失败")
 			return
+		}
+		// 同步改写 admin dist index.html 的资源前缀(否则新路径下管理后台 404)。
+		if a.Cfg.Web.AdminDist != "" {
+			if err := rewriteAdminBase(a.Cfg.Web.AdminDist, oldPath, newPath); err != nil {
+				response.ServerError(c, "改写前端 base 失败: "+err.Error())
+				return
+			}
 		}
 		a.Cfg.Admin.RandomPath = newPath
 		if err := a.Cfg.Save(); err != nil {

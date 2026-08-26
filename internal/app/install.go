@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -161,14 +162,12 @@ func (a *App) handleInstallInit(c *gin.Context) {
 		return
 	}
 
-	// 生成安全随机串: JWT 密钥 + admin 随机路径。
+	// 生成安全随机串: JWT 密钥(admin 路径在 dist 目录确定后解析)。
 	jwtSecret, _ := randomHex(32)
-	adminPath, _ := randomHex(8)
 
 	cfg.App.Name = defaultIfEmpty(req.AppName, "MessagePusher")
 	cfg.App.BaseURL = req.BaseURL
 	cfg.Auth.JWTSecret = jwtSecret
-	cfg.Admin.RandomPath = adminPath
 	cfg.Database.Type = req.DBType
 	switch req.DBType {
 	case "sqlite":
@@ -215,6 +214,13 @@ func (a *App) handleInstallInit(c *gin.Context) {
 	if cfg.Web.AdminDist == "" {
 		cfg.Web.AdminDist = "web/admin/dist"
 	}
+
+	// admin 随机路径取自前端构建产物(否则 base 不一致导致管理后台资源 404)。
+	adminPath := detectAdminBase(cfg.Web.AdminDist)
+	if adminPath == "" {
+		adminPath = "b322aa9602150d0c" // 与构建脚本默认一致
+	}
+	cfg.Admin.RandomPath = adminPath
 
 	// 校验 PG/Kafka 配置正确性(只做格式校验)。
 	if cfg.Database.Type == "postgres" && (cfg.Database.Host == "" || cfg.Database.Name == "") {
@@ -309,6 +315,7 @@ func checkWritable(dir string) bool {
 	return true
 }
 
+// checkPostgres 检查 PostgreSQL 连通性。
 func checkPostgres(p pgInfo) (bool, string) {
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		p.Host, p.Port, p.User, p.Password, p.Name, defaultIfEmpty(p.SSLMode, "disable"))
@@ -320,6 +327,25 @@ func checkPostgres(p pgInfo) (bool, string) {
 	}
 	conn.Close(ctx)
 	return true, "连接成功"
+}
+
+// detectAdminBase 从 admin 前端构建产物的 index.html 解析实际 base 路径。
+// 构建脚本将 base 写死为 /{随机串}/, 若运行时随机生成不同路径会导致管理后台资源 404。
+func detectAdminBase(distDir string) string {
+	if distDir == "" {
+		return ""
+	}
+	data, err := os.ReadFile(filepath.Join(distDir, "index.html"))
+	if err != nil {
+		return ""
+	}
+	// 匹配 <script src="/xxxx/assets/..."> 或 <link href="/xxxx/assets/...">。
+	re := regexp.MustCompile(`(?:src|href)="/([A-Za-z0-9]+)/assets/`)
+	m := re.FindSubmatch(data)
+	if len(m) < 2 {
+		return ""
+	}
+	return string(m[1])
 }
 
 // seedPlans 写入默认套餐。

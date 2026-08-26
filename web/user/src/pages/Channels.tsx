@@ -125,6 +125,9 @@ export default function Channels() {
         okText="保存"
         destroyOnClose
         width={520}
+        footer={editing?.type === 'webhook' || editing?.type === 'inapp'
+          ? [<Button key="close" onClick={() => setEditing(null)}>关 闭</Button>]
+          : undefined}
       >
         {editing?.type === 'email' && (
           <Form form={form} layout="vertical" key="email">
@@ -153,6 +156,9 @@ export default function Channels() {
         )}
         {editing?.type === 'webhook' && (
           <Typography.Text type="secondary">Webhook 渠道使用租户的"回调订阅"配置，无需单独配置。</Typography.Text>
+        )}
+        {editing?.type === 'inapp' && (
+          <Typography.Text type="secondary">站内信渠道为平台内置收件箱，无需外部配置。</Typography.Text>
         )}
       </Modal>
     </div>

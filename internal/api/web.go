@@ -28,7 +28,9 @@ func registerWebRoutes(r *gin.Engine, userDist, adminDist, adminPath string) {
 		r.NoRoute(func(c *gin.Context) {
 			p := c.Request.URL.Path
 			// 排除 API 与安装路由(返回真实 404)。
-			if strings.HasPrefix(p, "/api") || p == "/install" {
+			// 注意: 必须精确匹配 /api 或 /api/ 前缀, 不能简单 HasPrefix("/api"),
+			// 否则 /api-keys 等 SPA 前端路由会被误伤为 404。
+			if p == "/api" || strings.HasPrefix(p, "/api/") || p == "/install" {
 				c.Status(http.StatusNotFound)
 				return
 			}
