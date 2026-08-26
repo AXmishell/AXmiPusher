@@ -1,0 +1,53 @@
+app:
+    name: MessagePusher
+    env: local
+    data_dir: ./data
+    base_url: http://localhost:8080
+    user_web_url: ""
+    admin_web_url: ""
+database:
+    type: sqlite
+    host: ""
+    port: 0
+    user: ""
+    password: ""
+    name: ""
+    sslmode: disable
+    sqlite_path: ./data/messagepusher.db
+queue:
+    type: inprocess
+    brokers: []
+    topic: messages
+    group_id: worker
+    buffer_size: 1024
+    concurrency: 4
+store:
+    type: sqlite
+    dsn: ""
+    db_name: ""
+auth:
+    jwt_secret: a4ac8cd45a96adca91929a29b31b87fb370c00e8379b5f40c8fc6aa9d6eabc27
+    token_ttl: 24h0m0s
+    api_key_prefix: mp_
+    bcrypt_cost: 10
+admin:
+    random_path: b322aa9602150d0c
+web:
+    user_dist: web/user/dist
+    admin_dist: web/admin/dist
+    user_port: 19876
+    admin_port: 19877
+    api_target: http://127.0.0.1:8080
+ratelimit:
+    per_minute: 600
+    per_target_per_hour: 20
+    enabled: true
+retention:
+    message_days: 90
+epay:
+    gateway: ""
+    pid: ""
+    key: ""
+server:
+    host: 0.0.0.0
+    port: 8080
