@@ -202,7 +202,7 @@ func NewRouter(a *app.App) *gin.Engine {
 	r.POST("/api/v1/pay/notify", handler.PayNotify(a))
 	r.GET("/api/v1/pay/return", handler.PayReturn(a))
 
-	// 生产模式前端静态托管(根 → 用户中心, /{admin_path}/ → 管理后台)。
+	// 生产环境前端静态托管(根 → 用户中心, /{admin_path}/ → 管理后台)。
 	registerWebRoutes(r, a.Cfg.Web.UserDist, a.Cfg.Web.AdminDist, a.Cfg.Admin.RandomPath)
 
 	// 调试路由(模拟支付等): 仅 debug 构建注册, 默认构建为空桩。

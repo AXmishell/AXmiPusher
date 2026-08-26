@@ -78,7 +78,7 @@ func AdminStats(a *app.App) gin.HandlerFunc {
 				since = t
 			}
 		}
-		// 全部用户的消息量(本地模式逐用户统计)。
+		// 平台全量消息量(逐用户统计汇总)。
 		var users []models.User
 		a.DB.Find(&users)
 		total, success, failed := int64(0), int64(0), int64(0)

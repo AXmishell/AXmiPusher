@@ -1,5 +1,5 @@
 // Package store 定义消息记录存储抽象。
-// 生产模式使用 ClickHouse, 本地模式使用 SQLite(复用 GORM 同库)。
+// 消息存储与业务库同库(GORM), 消息写库即入队。
 package store
 
 import (

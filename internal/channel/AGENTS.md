@@ -23,10 +23,10 @@
 - 结论: 用户 Channel(type 维度, 用户覆盖) > 平台 Settings(SMTP)。
 
 ## 已踩坑(必读)
-- smtpSend 必须设连接 deadline: 撞上非 SMTP 端口(只收不发 banner 的服务)会永久阻塞 worker。连接建立后立即 conn.SetDeadline(now+15s), 会话总超时。
+- smtpSend 必须设连接 deadline: 撞上非 SMTP 端口(只收不发 banner 的服务)会永久阻塞消费者。连接建立后立即 conn.SetDeadline(now+15s), 会话总超时。
 - 端口 465 隐式 TLS, 587/25 走 STARTTLS(若支持), 25 常被反垃圾策略拦截。
 - 熔断默认: 阈值 3 次连续失败 → OPEN, 冷却 30s → HALF_OPEN 放行一个探针; 探针成功回 CLOSED, 失败立即重新 OPEN。
-- worker 对熔断错误不重试直接 DEAD: ErrCircuitOpen 是熔断错误, 不是渠道错误, 重试无意义。
+- 消费者对熔断错误不重试直接 DEAD: ErrCircuitOpen 是熔断错误, 不是渠道错误, 重试无意义。
 - webhook 签名: X-MP-Signature = HMAC-SHA256(sub.Secret, body) hex, 业务方验签防伪造。
 - 各渠道 Send 自行校验空 Recipient, 分别报错。
 

@@ -9,7 +9,7 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// storedMessage 消息记录表(GORM 模型, 本地模式复用业务库)。
+// storedMessage 消息记录表(GORM 模型, 与业务表同库)。
 type storedMessage struct {
 	MessageID  uint64    `gorm:"primaryKey;autoIncrement" json:"message_id"`
 	TenantID   uint64    `gorm:"not null;index:idx_tenant_created" json:"tenant_id"`
@@ -41,7 +41,7 @@ func (storedMessage) TableName() string { return "messages" }
 // TableName 事件表名。
 func (storedMessageEvent) TableName() string { return "message_events" }
 
-// SQLiteStore 基于 GORM(本地模式, 复用业务 SQLite 库)的消息存储。
+// SQLiteStore 基于 GORM 的消息存储(与业务库同库, 名称沿用旧版)。
 type SQLiteStore struct {
 	db *gorm.DB
 }

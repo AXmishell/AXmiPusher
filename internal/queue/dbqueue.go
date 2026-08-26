@@ -9,7 +9,7 @@ import (
 	"messagepusher/internal/store"
 )
 
-// DBQueue 数据库轮询队列(替代原 inprocess/Kafka 实现)。
+// DBQueue 数据库轮询队列。
 // 消息不再经队列入队: service.EnqueueOne 已通过 store.SaveMessage 落库,
 // 本队列按固定周期轮询数据库, 用 ClaimPending 认领 PENDING 消息交 worker 处理;
 // 崩溃残留的 SENDING/RETRYING 消息由 ReapStale 按租约回收重试。

@@ -16,7 +16,7 @@ deploy/
 ├── install.sh              # 服务器一键安装(docker|binary 双模式, --port/--dir)
 ├── cloud-deploy.sh         # 旧云端流程(git pull → 同步产物到 docker 栈, 已被 cloud-build-deploy.sh 取代)
 ├── docker-deploy.ps1       # 本机驱动云端单机编排(旧流程, 已被 git 流取代)
-├── docker-compose.yml      # 生产全栈编排(PG+CH+Kafka+Redis+api+worker, 1G 机器跑不动)
+├── docker-compose.yml      # 生产全栈编排(PG+Redis+api, 1G 机器跑不动)
 ├── server.local.json       # 本机凭据(host/port/key/redis_password, 绝不提交)
 └── context/                # 安装包产物: api 二进制 + web/user|admin dist + Dockerfile + 单机 compose
 ```

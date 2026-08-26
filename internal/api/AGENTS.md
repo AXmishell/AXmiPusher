@@ -5,7 +5,7 @@ HTTP 层。Gin 引擎装配、路由、中间件、handler。依赖注入中心 
 ## 文件布局
 
 - `router.go`: 路由装配入口 `NewRouter(a *app.App) *gin.Engine`
-- `web.go`: 生产模式前端静态托管(SPA)
+- `web.go`: 前端静态托管(SPA, 生产环境)
 - `handler/`(18 文件): 业务处理器, 每文件按业务聚合
 - `middleware/`: 认证、角色、安装状态中间件
 

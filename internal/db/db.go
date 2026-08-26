@@ -1,5 +1,5 @@
 // Package db 负责 GORM 初始化与自动迁移。
-// 生产模式用 PostgreSQL, 本地模式用 SQLite, 由配置切换驱动。
+// 业务库支持 PostgreSQL 与 SQLite, 由配置切换驱动。
 package db
 
 import (
@@ -50,7 +50,7 @@ func Open(cfg *config.Config) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	// SQLite 本地模式: 单写连接, 避免并发写锁冲突。
+	// SQLite: 单写连接, 避免并发写锁冲突。
 	if cfg.Database.Type == "sqlite" {
 		if sqlDB, err := gdb.DB(); err == nil {
 			sqlDB.SetMaxOpenConns(1)

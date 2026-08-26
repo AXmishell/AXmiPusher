@@ -1,7 +1,7 @@
 # AXmiPusher 消息推送平台
 
 统一受理消息 → 队列 → 多渠道发送(Webhook / Email / APNs / FCM / 站内信)→ 回执统计的一站式消息推送平台。
-Go 后端(单仓库双进程)+ 双独立 React 前端(用户中心 / 管理后台),支持本地单机模式与生产分布式部署。
+Go 后端(单仓库, api 单进程内置数据库轮询消费者)+ 双独立 React 前端(用户中心 / 管理后台),支持 SQLite 单机运行与 PostgreSQL 生产部署。
 
 ## 功能特性
 
@@ -18,7 +18,7 @@ Go 后端(单仓库双进程)+ 双独立 React 前端(用户中心 / 管理后�
 
 | 层 | 技术 |
 |---|---|
-| 后端 | Go 1.25 + Gin + GORM,可选 PostgreSQL / Redis / Kafka / ClickHouse |
+| 后端 | Go 1.25 + Gin + GORM,数据库驱动(PostgreSQL / SQLite);Redis 可选(限流/熔断/幂等) |
 | 前端 | Vite + React 18 + TypeScript + Ant Design 5(ProComponents),两个独立应用 |
 | 部署 | systemd / Docker Compose 双模式;云端编译工作流(git push → 云端 go/npm build) |
 
@@ -26,8 +26,8 @@ Go 后端(单仓库双进程)+ 双独立 React 前端(用户中心 / 管理后�
 
 ```
 messagepusher/
-├── cmd/             # 4 入口: api(HTTP+本地内嵌消费者) / worker(独立消费者) / web(前端托管双端口) / redis-mock(开发工具)
-├── internal/        # 后端: app(组合根/安装向导) + api + channel + compat + config + db + models + pkg + queue + service + store + worker
+├── cmd/             # 3 入口: api(HTTP+内置数据库轮询消费者) / web(前端托管双端口) / redis-mock(开发工具)
+├── internal/        # 后端: app(组合根/安装向导) + api + channel + compat + config + db + models + pkg + queue(数据库轮询) + service + store(业务库存储) + worker
 ├── web/
 │   ├── user/        # 用户中心 (Vite+React+AntD Pro)
 │   └── admin/       # 管理后台 (随机路径 base, 支持运行期轮换)
@@ -36,10 +36,10 @@ messagepusher/
 └── openapi.yaml     # API 规范
 ```
 
-## 快速开始(本地模式)
+## 快速开始(SQLite 单机)
 
 ```bash
-# 后端(SQLite + 进程内队列, 内嵌消费者)
+# 后端(SQLite + 内置数据库轮询消费者)
 go run ./cmd/api                  # :8080, 首次访问 /install 走安装向导
 
 # 前端(可选, 生产由主程序托管 dist)

@@ -64,7 +64,7 @@ type DatabaseConfig struct {
 	SQLitePath string `yaml:"sqlite_path"`
 }
 
-// QueueConfig 数据库轮询队列配置(替代原 Kafka/inprocess 队列)。
+// QueueConfig 数据库轮询队列配置。
 type QueueConfig struct {
 	// PollInterval 轮询间隔(毫秒, 默认 500)。
 	PollInterval int `yaml:"poll_interval"`

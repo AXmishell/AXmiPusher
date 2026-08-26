@@ -11,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// registerWebRoutes 生产模式托管前端静态资源:
+// registerWebRoutes 托管前端静态资源:
 //   /                    → 用户中心(SPA, 经 NoRoute 兜底, 避免与 /api 路由冲突)
 //   /{admin_path}/        → 管理员后台(SPA, base 为 /{admin_path}/)
 func registerWebRoutes(r *gin.Engine, userDist, adminDist, adminPath string) {

@@ -11,16 +11,16 @@
 ## 核心模式
 
 ### Build 装配顺序(不可乱)
-1. `db.Open` → GORM(生产 PG / 本地 SQLite)
-2. `store`(sqlite/clickhouse)→ 消息记录存储
-3. `queue`(inprocess/kafka)→ 消息队列
+1. `db.Open` → GORM(PostgreSQL / SQLite, 配置切换)
+2. `store`(与业务库同库)→ 消息记录存储
+3. `queue`(数据库轮询)→ 消息队列(DBQueue, 惰性 getStore)
 4. 服务: Auth/Limiter/Messages/Templates/Settings/Pay/Batch
 5. `setupRedis`: Redis 探活失败按配置降级内存
 6. 渠道注册: Breaker(内存/Redis)→ Registry → 5 个 Sender; 最后把 HasChannel/IsAvailable 注入 Messages(快速失败 + 熔断降级路由)
 
 ### Reinit(安装程序写入配置后调用)
-- 保留**同类型**队列实例(`keepQueue`): 消费者已订阅旧实例, 重建 → 消息无人消费 — 已踩坑
-- 只重建 Store/服务/渠道, Queue 复用; 然后 `a.Messages.SetQueue(keepQueue)` 回绑
+- 保留 DBQueue 实例(`keepQueue`): 消费者已订阅旧实例, 重建 → 消息无人消费 — 已踩坑
+- DBQueue 持惰性 getStore, 重建 Store 后轮询自动取最新实例; 只重建 Store/服务/渠道, Queue 复用, 然后 `a.Messages.SetQueue(keepQueue)` 回绑
 
 ### Router 注入
 - `App.Router` 由 `cmd/api` 在 `NewRouter` 后注入(`a.Router = router`)
@@ -41,12 +41,12 @@
 | 函数 | 作用 | 注意 |
 |------|------|------|
 | `DetectAdminBase(distDir)` | 从 admin dist index.html 正则解析 base 路径 | 相对 base('./') 构建时匹配不到 → 回退默认 |
-| `RegisterAdminSPA(prefix, distDir)` | 动态注册 admin 前缀 SPA 静态托管 | Router 为 nil 时跳过(worker 进程) |
-| `Reinit(cfg)` | 安装后重建组件 | 保留同类型队列, 勿重建 |
+| `RegisterAdminSPA(prefix, distDir)` | 动态注册 admin 前缀 SPA 静态托管 | Router 为 nil 时跳过(仅 api 进程注入) |
+| `Reinit(cfg)` | 安装后重建组件 | 保留 DBQueue 实例, 勿重建 |
 
 ## 已踩坑
 
-- Reinit 不得重建同类型队列(消费者订阅旧实例 → 无人消费)
+- Reinit 保留 DBQueue 实例(消费者已订阅, 重建 → 无人消费); DBQueue 认领依赖惰性 getStore, 切库后取最新实例
 - admin path 必须与构建 base 一致(DetectAdminBase 兜底, 否则管理后台 404)
 - 轮换路径后必须 RegisterAdminSPA 新前缀(仅改 config 不够, 路由树不自动更新)
 - 安装向导用 `randomHex(32)` 生成 JWT 密钥, 勿硬编码/复用
