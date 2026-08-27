@@ -44,14 +44,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           # RN gradle 插件 settings-plugin 强制要求 Java 17 工具链
           java-version: '17'
           cache: gradle
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           # RN 0.87 要求 Node >= 22.11
           node-version: '22'
@@ -92,10 +92,11 @@ jobs:
 
       - name: 构建 release APK
         working-directory: mobile/android
+        # 用 bash 显式调用 gradlew(不依赖可执行位, Windows 提交后 +x 可能丢失)
         # APP_VERSION 注入 build.gradle: versionName=1.2.3, versionCode 由 semver 推导
         run: |
           export APP_VERSION="${GITHUB_REF_NAME#v}"
-          ./gradlew assembleRelease --no-daemon
+          bash gradlew assembleRelease --no-daemon
 
       - name: 整理 APK 产物
         run: |
