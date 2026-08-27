@@ -46,6 +46,7 @@ mobile/
 - JDK 17 或 21(推荐使用 Android Studio 自带的 JBR)
 - Android SDK(compileSdk 37 / targetSdk 36 / minSdk 24)
 - Android Studio(建议,自带 SDK 与模拟器)
+- Python 3.9+(可选, 仅 APK 签名工具 `scripts/android_signer.py` 需要, 纯标准库)
 
 ## 构建与运行
 
@@ -95,6 +96,54 @@ keytool -genkeypair -v -keystore release.keystore -alias axmipusher \
 | `ANDROID_KEY_PASSWORD` | 别名密码 |
 
 未配置 Secret 时 CI 出 debug 签名包(仍可安装)。**注意**:正式签名 keystore 务必妥善保管并长期保留, 丢失后无法再对老用户推送升级。
+
+### APK 签名工具(推荐, 一键完成全部签名流程)
+
+`scripts/android_signer.py`(纯 Python 标准库, 零第三方依赖, 跨平台 Windows/macOS/Linux, 中文交互)封装了 keystore 生成 → 配置 → 构建签名 → 验证 → 导出 GitHub Secret → 备份的完整流程。自动探测 keytool / apksigner / gradlew / JDK(优先 Java 17, 满足 RN 构建工具链要求)。
+
+**子命令总览**(均支持 `--help`):
+
+| 子命令 | 功能 |
+|---|---|
+| `generate` | 生成新 keystore(交互式填写证书 DN, 仅 CN 必填)+ 写 `keystore.properties` + 导出 base64 + 打印 GitHub Secret 配置表 |
+| `sign` | 构建并签名 release APK(gradlew assembleRelease, 自动注入 JDK 17) |
+| `verify` | 验证 APK 签名(apksigner), 与本地 keystore 指纹对比, 输出"正式签名 ✓"或警告 |
+| `base64` | 导出 keystore 单行 base64(供 Secret `ANDROID_KEYSTORE_BASE64`) |
+| `secrets` | 打印 GitHub Secrets 配置指引 |
+| `backup` | 一键备份 keystore + base64 + README 到备份目录 |
+
+**典型流程**:
+
+```bash
+cd mobile
+
+# 1. 首次生成正式签名(交互式; 密码 <6 位会被拒绝; 已存在 keystore 时询问确认并自动备份旧钥)
+python scripts/android_signer.py generate
+#    交互示例:
+#      CN(组织/名称, 必填): 你的组织名        ← 必填
+#      组织单位 OU(回车跳过):                 ← 可选, 隐私起见脚本不内置默认值
+#      ...(其余字段同理, 回车跳过)
+#    生成后自动输出 GitHub Secret 配置表(密码仅显示这一次)
+
+# 2. 构建并签名 APK(自动探测 JDK 17; --version 可指定版本号)
+python scripts/android_signer.py sign --version 1.2.3
+
+# 3. 验证签名
+python scripts/android_signer.py verify     # 输出「正式签名 ✓」即成功
+
+# 4. 一键备份签名材料(务必妥善离线保管!)
+python scripts/android_signer.py backup
+
+# 5. 导出 base64 / 查看 Secret 指引(配置 CI 正式签名时用)
+python scripts/android_signer.py base64
+python scripts/android_signer.py secrets
+```
+
+**安全与隐私说明**:
+- 证书 DN **不固化在脚本中**, 每次 `generate` 交互式输入(仅 CN 必填), 避免组织/地址等隐私信息出现在代码里
+- keystore 密码自动生成时仅打印一次; 所有密码/密钥文件不写日志、不入库(`.gitignore` 已忽略 `keystore.properties` / `*.keystore` / `*.jks`)
+- 已存在 keystore 时 `generate` 会先备份为 `release.keystore.old-<时间戳>` 再重建, 不会静默覆盖
+- 工具探测不到 keytool/apksigner/JDK 时给出明确中文指引(设置 `JAVA_HOME` / `ANDROID_HOME`)
 
 ## 使用说明
 
