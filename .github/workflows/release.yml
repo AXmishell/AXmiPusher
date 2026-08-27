@@ -1,7 +1,8 @@
 name: Release
 
-# 发布安装包: 推送 v* tag(如 v1.0.0)时自动构建 Linux amd64 单安装包并发布到 GitHub Releases
-# 调用 deploy/build-release.sh 完成构建(go 交叉编译 + 双前端 npm build + tar 打包)
+# 发布: 推送 v* tag(如 v1.0.0)时自动构建并发布到 GitHub Releases
+#   - release job: Linux amd64 单安装包(Go 交叉编译 + 双前端 npm build + tar 打包, deploy/build-release.sh)
+#   - apk    job:  Android APK(React Native, 需依赖 release 先创建 Release 再上传, 避免双 job 竞争)
 on:
   push:
     tags: ['v*']
@@ -11,7 +12,7 @@ permissions:
 
 jobs:
   release:
-    name: 构建并发布安装包
+    name: 构建安装包(Linux)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,3 +35,74 @@ jobs:
         with:
           files: dist-install/axmipusher-install-*.tar.gz
           generate_release_notes: true
+
+  apk:
+    name: 构建 Android APK
+    # 等 Linux 安装包 job 先创建 Release 后再上传, 避免两个 job 同时调用 GitHub Release API 竞争
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          # RN gradle 插件 settings-plugin 强制要求 Java 17 工具链
+          java-version: '17'
+          cache: gradle
+
+      - uses: actions/setup-node@v4
+        with:
+          # RN 0.87 要求 Node >= 22.11
+          node-version: '22'
+
+      - name: 安装 Android SDK 组件(platform 37 + build-tools 37)
+        # runner 预装 SDK 但缺 compileSdk 37 组件; 此处 best-effort 预装加速,
+        # 若失败由 AGP 在构建时自动补装(licenses 已接受)兜底
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;37.0.0" >/dev/null 2>&1 || true
+          # 兼容新版 SDK 的 minor 版本目录(android-37.0)
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" >/dev/null 2>&1 || true
+
+      - name: 安装 npm 依赖
+        working-directory: mobile
+        # 项目无 lockfile 提交, 显式用官方 registry(项目 .npmrc 固定 npmmirror 仅国内更快)
+        run: npm install --no-audit --no-fund --registry=https://registry.npmjs.org
+
+      - name: 还原正式签名(可选)
+        # 配置 ANDROID_KEYSTORE_BASE64 / ANDROID_KEYSTORE_PASSWORD / ANDROID_KEY_ALIAS /
+        # ANDROID_KEY_PASSWORD 四个 Secret 即正式签名; 未配置时构建回退 debug 签名(仍可安装)
+        working-directory: mobile/android/app
+        run: |
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > release.keystore
+            {
+              echo "storeFile=release.keystore"
+              echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
+              echo "keyAlias=$ANDROID_KEY_ALIAS"
+              echo "keyPassword=$ANDROID_KEY_PASSWORD"
+            } > keystore.properties
+          fi
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: 构建 release APK
+        working-directory: mobile/android
+        # APP_VERSION 注入 build.gradle: versionName=1.2.3, versionCode 由 semver 推导
+        run: |
+          export APP_VERSION="${GITHUB_REF_NAME#v}"
+          ./gradlew assembleRelease --no-daemon
+
+      - name: 整理 APK 产物
+        run: |
+          mkdir -p dist-apk
+          cp mobile/android/app/build/outputs/apk/release/app-release.apk "dist-apk/axmipusher-android-${GITHUB_REF_NAME#v}.apk"
+
+      - name: 上传 APK 到 GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist-apk/axmipusher-android-*.apk

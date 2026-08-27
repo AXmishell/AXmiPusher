@@ -1,0 +1,13 @@
+<!--
+  仅 release 变体使用的清单覆盖(release source set)。
+  兜底保障: com.facebook.react 插件会把 release 的 usesCleartextTraffic 占位符强制解析为
+  "false", 此覆盖层在清单合并阶段用 tools:replace 强制改回 "true",
+  确保 release 包也能连 http 内网服务器(如 http://192.168.x.x:8080)。
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:usesCleartextTraffic="true"
+        tools:replace="android:usesCleartextTraffic" />
+</manifest>

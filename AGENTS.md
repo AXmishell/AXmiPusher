@@ -15,6 +15,7 @@ AXmiPusher/
 ├── web/
 │   ├── user/        # 用户中心 (Vite+React+AntD Pro, :19876 生产 / :5173 dev)
 │   └── admin/       # 管理后台 (同上, :19877 生产 / :5174 dev, 随机路径 base)
+├── mobile/          # Android 客户端 (React Native 0.87, 登录+站内信+通知栏推送, 详见 mobile/README.md)
 ├── deploy/          # 安装分发(install.sh/pack-install.ps1/build-release.sh) + 云端编译部署脚本 + context/(安装包源文件, Dockerfile/compose 已入库)
 ├── scripts/         # 本地工具: hook-receiver.ps1(:9090) / mock-smtp.ps1(:2525)
 ├── .github/         # GitHub Actions: ci.yml(编译检查) + release.yml(推 v* tag 自动发布安装包)
@@ -37,10 +38,11 @@ AXmiPusher/
 | 用户管理(新增/编辑/重置密码/启禁用) | internal/api/handler/admin.go | POST/PUT /admin/users + status |
 | 前端页面 | web/{user,admin}/src/pages/ | ProTable 模式 |
 | 前端托管 | cmd/web/ | 独立双端口 19876/19877, 读 config.yaml |
+| Android 客户端 | mobile/ | RN 0.87; 登录→站内信(/api/v1/inbox)→通知; 原生 WorkManager 后台轮询, 详见 mobile/README.md |
 | 安装分发 | deploy/install.sh + pack-install.ps1 | 详见 deploy/AGENTS.md |
 | 部署编排 | deploy/cloud-build-deploy.sh | 云端编译流(git push → 云端 go/npm build) |
 | CI 编译检查 | .github/workflows/ci.yml | push main/deploy 自动跑 go+前端构建 |
-| 发布 Release | .github/workflows/release.yml + deploy/build-release.sh | 推 v* tag 自动构建 Linux amd64 安装包并发布 GitHub Releases |
+| 发布 Release | .github/workflows/release.yml + deploy/build-release.sh | 推 v* tag 自动构建 Linux amd64 安装包 + Android APK 并发布 GitHub Releases(apk job 依赖 release job 避免 Release 竞争) |
 
 ## CODE MAP
 | Symbol | Type | Location | Role |
@@ -118,7 +120,7 @@ go test ./...                # 本地验证(仅开发期; 正式验证走云端�
 # CI 编译检查(GitHub Actions, push main/deploy 自动跑)
 #   .github/workflows/ci.yml: backend(go build/vet/test) + frontend(matrix user/admin npm run build)
 
-# 发布 Release(推 tag 触发 Actions 构建并发布安装包到 GitHub Releases)
+# 发布 Release(推 tag 触发 Actions 构建并发布安装包 + Android APK 到 GitHub Releases)
 git push github --tags   # 例: git tag v1.0.0 && git push github v1.0.0
 # 版本号约定(语义化版本 SemVer): v<大版本>.<新功能>.<bug修复>
 #   1 = 大版本更新(破坏性变更/架构调整, 如重构数据库驱动)
@@ -126,6 +128,9 @@ git push github --tags   # 例: git tag v1.0.0 && git push github v1.0.0
 #   3 = bug 修复(缺陷修正, 无新功能)
 #   示例: v1.2.3 = 第 1 个大版本的 2 个新功能 + 3 个 bug 修复
 #   tag 推送到 github 后由 .github/workflows/release.yml 自动构建并发布(包名/目录名/VERSION 文件均取 tag 名去 v 前缀)
+#   APK 由 release.yml 的 apk job 构建(upload: dist-apk/axmipusher-android-<版本>.apk);
+#   versionName 取 tag 去 v, versionCode 由 semver 推导(X*10000+Y*100+Z);
+#   正式签名需配置 4 个 Secret(ANDROID_KEYSTORE_BASE64/PASSWORD/KEY_ALIAS/KEY_PASSWORD), 未配置回退 debug 签名
 
 # 云端编译部署流(2026-08 起, 取代本地构建产物)
 git push cloud deploy
